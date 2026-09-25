@@ -199,11 +199,87 @@ public struct SQLMigration: Sendable {
     }
 }
 
+public enum SQLMigrationPlanStatus: Codable, Equatable, Sendable {
+    case pending
+    case applied
+    case legacyNeedsChecksum
+    case checksumDrift(recorded: String)
+}
+
+public struct SQLMigrationPlanEntry: Codable, Equatable, Sendable {
+    public let id: String
+    public let checksum: String
+    public let status: SQLMigrationPlanStatus
+
+    public init(id: String, checksum: String, status: SQLMigrationPlanStatus) {
+        self.id = id
+        self.checksum = checksum
+        self.status = status
+    }
+}
+
+/// A point-in-time report for the declared migration IDs. Planning can create
+/// or upgrade the bookkeeping journal, but never executes an application's
+/// `up` or `down` SQL statements.
+public struct SQLMigrationPlan: Codable, Equatable, Sendable {
+    public let entries: [SQLMigrationPlanEntry]
+
+    public init(entries: [SQLMigrationPlanEntry]) {
+        self.entries = entries
+    }
+
+    public var pendingIDs: [String] {
+        entries.filter { $0.status == .pending }.map(\.id)
+    }
+
+    public var legacyIDs: [String] {
+        entries.filter { $0.status == .legacyNeedsChecksum }.map(\.id)
+    }
+
+    public var driftedIDs: [String] {
+        entries.compactMap { entry in
+            if case .checksumDrift = entry.status { return entry.id }
+            return nil
+        }
+    }
+
+    public var isUpToDate: Bool {
+        entries.allSatisfy { $0.status == .applied }
+    }
+}
+
 public struct SQLMigrationRunner: Sendable {
     public let journalTable: SQLIdentifier
 
     public init(journalTable: SQLIdentifier = .migrationJournal) {
         self.journalTable = journalTable
+    }
+
+    public func plan(_ migrations: [SQLMigration], on database: any SQLDatabase) async throws -> SQLMigrationPlan {
+        let ordered = try Self.ordered(migrations)
+        try await ensureJournal(on: database)
+
+        let journal = journalTable.description
+        var entries: [SQLMigrationPlanEntry] = []
+        for migration in ordered {
+            let status = try await database.withMigrationLock(key: lockKey(for: migration.id)) { transaction in
+                let recorded = try await Self.recordedChecksum(
+                    for: migration.id,
+                    in: journal,
+                    transaction: transaction
+                )
+                guard let recorded else { return SQLMigrationPlanStatus.pending }
+                if recorded == Self.legacyChecksumMarker { return .legacyNeedsChecksum }
+                guard recorded == migration.checksum else { return .checksumDrift(recorded: recorded) }
+                return .applied
+            }
+            entries.append(SQLMigrationPlanEntry(
+                id: migration.id,
+                checksum: migration.checksum,
+                status: status
+            ))
+        }
+        return SQLMigrationPlan(entries: entries)
     }
 
     public func apply(_ migrations: [SQLMigration], to database: any SQLDatabase) async throws {

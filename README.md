@@ -41,7 +41,7 @@ Este checkout implementa DI/request scopes, contexto e lifecycle; HTTP/NIO e Rou
 
 Os CSVs em `Benchmarks/Baselines/` são medições locais, não SLAs; os baselines atuais estão associados ao commit local `ce5bef0`. O snapshot AOT tem verificação reproduzível com `bash scripts/verify-aot-snapshot.sh`. Os roadmaps 2/3/v1.5 estão arquivados em `roadmap/`; as matrizes de implementação indicam os gates pendentes. `benchmark-observability.sh` compara métricas HTTP ligadas/desligadas; `benchmark-modules.sh` mede adapters locais em memória/stub.
 
-A suíte tem 97 testes; oito testes de integração com serviços externos rodam quando configurados. A suíte completa passou em macOS com PostgreSQL e Redis locais habilitados em Debug e Release:
+A suíte tem 98 testes; oito testes de integração com serviços externos rodam quando configurados. A suíte completa passou em macOS com PostgreSQL e Redis locais habilitados em Debug e Release:
 
 ```bash
 bash scripts/test-unit.sh

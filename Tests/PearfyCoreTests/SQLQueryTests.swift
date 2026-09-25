@@ -102,6 +102,35 @@ import Testing
     #expect(await legacyStore.statements.filter { $0 == migration.up.statement }.isEmpty)
 }
 
+@Test func migrationRunnerPlanReportsPendingAppliedLegacyAndDrift() async throws {
+    let store = MigrationStore()
+    let database = FakeDatabase(store: store)
+    let runner = SQLMigrationRunner()
+    let first = SQLMigration(id: "010-create-profiles", up: SQLQuery(unsafeSQL: "CREATE TABLE profiles (id UUID)"))
+    let second = SQLMigration(id: "020-add-profile-name", up: SQLQuery(unsafeSQL: "ALTER TABLE profiles ADD name TEXT"))
+
+    let initialPlan = try await runner.plan([second, first], on: database)
+    #expect(initialPlan.entries.map(\.id) == [first.id, second.id])
+    #expect(initialPlan.pendingIDs == [first.id, second.id])
+    #expect(!initialPlan.isUpToDate)
+
+    try await runner.apply([first], to: database)
+    let partialPlan = try await runner.plan([first, second], on: database)
+    #expect(partialPlan.entries.map(\.status) == [.applied, .pending])
+    #expect(partialPlan.pendingIDs == [second.id])
+
+    let changedFirst = SQLMigration(id: first.id, up: SQLQuery(unsafeSQL: "CREATE TABLE profiles (id UUID, name TEXT)"))
+    let driftPlan = try await runner.plan([changedFirst], on: database)
+    #expect(driftPlan.driftedIDs == [first.id])
+
+    let legacyStore = MigrationStore()
+    await legacyStore.seedLegacy(id: first.id)
+    let legacyDatabase = FakeDatabase(store: legacyStore)
+    let legacyPlan = try await runner.plan([first], on: legacyDatabase)
+    #expect(legacyPlan.legacyIDs == [first.id])
+    #expect(await legacyStore.recordedChecksum(id: first.id) == nil)
+}
+
 @Test func migrationRunnerRejectsInvalidAndDuplicateIDsBeforeDatabaseWork() async throws {
     let store = MigrationStore()
     let database = FakeDatabase(store: store)

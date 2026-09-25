@@ -222,11 +222,15 @@ import Testing
         try await firstDatabase.start()
         try await secondDatabase.start()
 
+        let pendingPlan = try await runner.plan([migration], on: firstDatabase)
+        #expect(pendingPlan.pendingIDs == [migration.id])
+
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { try await runner.apply([migration], to: firstDatabase) }
             group.addTask { try await runner.apply([migration], to: secondDatabase) }
             try await group.waitForAll()
         }
+        #expect(try await runner.plan([migration], on: firstDatabase).isUpToDate)
 
         let journalChecksums = try await firstDatabase.queryStrings(SQLQuery(
             unsafeSQL: "SELECT checksum FROM \(journal) WHERE id = $1",
@@ -241,6 +245,7 @@ import Testing
             checksumDriftRejected = id == migration.id
         }
         #expect(checksumDriftRejected)
+        #expect(try await runner.plan([changedMigration], on: firstDatabase).driftedIDs == [migration.id])
 
         let failingMigration = SQLMigration(
             id: "zz-failed-\(suffix)",
@@ -257,12 +262,14 @@ import Testing
             unsafeSQL: "SELECT checksum FROM \(journal) WHERE id = $1",
             parameters: [.text(failingMigration.id)]
         ), column: "checksum").isEmpty)
+        #expect(try await runner.plan([failingMigration], on: secondDatabase).pendingIDs == [failingMigration.id])
 
         try await runner.rollback(migration, on: firstDatabase)
         #expect(try await firstDatabase.queryStrings(SQLQuery(
             unsafeSQL: "SELECT checksum FROM \(journal) WHERE id = $1",
             parameters: [.text(migration.id)]
         ), column: "checksum").isEmpty)
+        #expect(try await runner.plan([migration], on: firstDatabase).pendingIDs == [migration.id])
         try await firstDatabase.execute(SQLQuery(unsafeSQL: "DROP TABLE \(journal)"))
     } catch {
         try? await firstDatabase.execute(SQLQuery(unsafeSQL: "DROP TABLE IF EXISTS \(table)"))
