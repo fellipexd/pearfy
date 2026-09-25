@@ -16,8 +16,8 @@ Atualizado em 2026-09-25 contra o código e testes do checkout ativo. As pastas 
 | G7 — multi-instância | Parcial | Migrations foram concorridas em dois clientes PostgreSQL independentes; ainda não há teste de processos separados para invariantes/idempotência de dados nem validação de failover. |
 | G8 — PaymentEngine | Ausente | Sem Money/transferências/reservas/ledger/idempotência/outbox financeiros. |
 | G9 — Guardian | Ausente | Workflow de build/teste e verificações pontuais existem; não há enforcement fail-closed das políticas de SQL, migration, pagamentos ou Connect. |
-| G10 — gRPC/MCP | Ausente | Não há transporte gRPC nem servidor MCP. |
-| G11 — release | Parcial | 100 testes locais passam em Debug/Release com PostgreSQL/Redis, incluindo Connect schemas, Social/PostgreSQL, transaction manager e migration artifacts/plan/locking/drift; workflow macOS/Linux está configurado, mas sem execução remota e sem revisão/certificação completa de release. |
+| G10 — gRPC/MCP | Parcial | `pearfy mcp` expõe via stdio inspeção read-only do projeto, inventário/consulta de módulos e planos de alteração sem escrita; não há transporte gRPC nem tools de escrita, code search ou Guardian. |
+| G11 — release | Parcial | 101 testes locais passam em Debug/Release com PostgreSQL/Redis, incluindo Connect schemas, Social/PostgreSQL, transaction manager, migration artifacts/plan/locking/drift e MCP read-only; workflow macOS/Linux está configurado, mas sem execução remota e sem revisão/certificação completa de release. |
 
 ## Roadmap 3 — Connect v1.3 e extensões v1.4
 
@@ -48,8 +48,8 @@ Atualizado em 2026-09-25 contra o código e testes do checkout ativo. As pastas 
 
 ## Validação da fatia atual
 
-- `bash scripts/test-integrations.sh`: 100 testes passaram em Debug com PostgreSQL e Redis locais; inclui groups/Connect schema snapshot, Entity/Schema registry, UUIDv7, schema plans, migration artifacts/plans/checksums/locks, Transaction Manager, Module Manager, Social graph, HTTP, DI e adapters.
-- `bash scripts/test-integrations.sh -c release`: os mesmos 100 passaram em Release.
+- `bash scripts/test-integrations.sh`: 101 testes passaram em Debug com PostgreSQL e Redis locais; inclui groups/Connect schema snapshot, Entity/Schema registry, UUIDv7, schema plans, migration artifacts/plans/checksums/locks, Transaction Manager, Module Manager, MCP read-only, Social graph, HTTP, DI e adapters.
+- `bash scripts/test-integrations.sh -c release`: os mesmos 101 passaram em Release.
 - `bash scripts/verify-aot-snapshot.sh`: passou; `Examples/GreeterFeature` e `Examples/DiscoveryApp` compilaram após as alterações de macros.
 - E2E local do Module Manager: scaffold, `add postgres`, `doctor` e build; `remove postgres`, `doctor` e novo build passaram.
 

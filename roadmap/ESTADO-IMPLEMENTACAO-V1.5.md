@@ -14,7 +14,7 @@ Atualizado em 2026-09-25 contra o código e os testes locais. O escopo é o Pear
 | Identity e Social Login | Ausente | Sem contrato de identidade, OAuth/OIDC, associação opcional de credenciais ou testes de PKCE/state/nonce e concorrência de primeiro login. |
 | Module Registry e Skills | Parcial | Module Manager cataloga produtos disponíveis, incluindo `PearfyTransactions`, e planeja mudanças SwiftPM gerenciadas. Faltam versões/capabilities verificáveis e Skills/recipes versionadas para projetos consumidores. |
 | DevKit harness/agents | Ausente | Sem harness, execução isolada de tarefas, seleção de Skills ou relatório redigido. |
-| MCP | Ausente | Sem servidor/tool registry MCP nem políticas read-only/write com escopo e testes de autorização. |
+| MCP | Primeiro slice implementado | `pearfy mcp` oferece transporte local stdio, tools read-only para contexto do projeto e inventário/inspeção/plan de módulos, além de resources limitados ao workspace e registro. Ainda faltam code search, contracts/data/tests/integration tools, políticas de autorização e tools com consentimento de escrita. |
 | Guardian | Ausente | Sem gates verificáveis de build/teste/segurança ligados ao registry, nem evidência reproduzível por capability. |
 | Persistência e evolução de schema | Parcial | `SQLMigrationCatalog` carrega artifacts JSON versionados e parametrizados; `SQLMigrationRunner` valida IDs, grava SHA-256 de SQL/parâmetros, detecta drift, atualiza journal legado, serializa apply por advisory transaction lock PostgreSQL e expõe plan pending/applied/legacy/drift sem executar DDL de domínio. Ainda faltam detecção de migrations removidas/gaps, rollback plans e CLI; ver roadmap 2 G3. |
 
@@ -22,9 +22,9 @@ Atualizado em 2026-09-25 contra o código e os testes locais. O escopo é o Pear
 
 - `bash scripts/test-integrations.sh --filter postgresSocialGraphEnforcesOwnerVisibilityFollowAndBlockPolicies`: 1 teste passou contra PostgreSQL local, incluindo ownership, aprovação, bloqueios, visibilidade e constraint de handle.
 - `bash scripts/test-integrations.sh --filter postgresTransactionManagerCommitsAndRollsBackOnOnePhysicalTransaction`: 1 teste passou contra PostgreSQL local.
-- `bash scripts/test-integrations.sh`: 100 testes passaram em Debug com PostgreSQL/Redis locais, incluindo discovery de schemas Connect via `@ContractModel`.
-- `bash scripts/test-integrations.sh -c release`: 100 testes passaram em Release com PostgreSQL/Redis locais, incluindo discovery de schemas Connect via `@ContractModel`.
-- `bash scripts/test-unit.sh`: 100 testes passaram em Debug, incluindo discovery de schemas Connect via `@ContractModel`.
+- `bash scripts/test-integrations.sh`: 101 testes passaram em Debug com PostgreSQL/Redis locais, incluindo discovery de schemas Connect via `@ContractModel` e MCP read-only.
+- `bash scripts/test-integrations.sh -c release`: 101 testes passaram em Release com PostgreSQL/Redis locais, incluindo discovery de schemas Connect via `@ContractModel` e MCP read-only.
+- `bash scripts/test-unit.sh`: 101 testes passaram em Debug, incluindo discovery de schemas Connect via `@ContractModel` e MCP read-only.
 
 Esses resultados cobrem apenas as capacidades presentes neste checkout; não certificam capacidades marcadas como ausentes/parciais.
 

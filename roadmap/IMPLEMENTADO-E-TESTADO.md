@@ -14,7 +14,7 @@
 - **Cache e messaging:** cache local/Redis e broker local/Redis com ack, retry, DLQ e recuperação.
 - **Social v1.5 (slice inicial):** `PearfySocial` define atores, handles validados, visibilidade e contrato do grafo; `PearfySocialPostgres` persiste atores, follows e blocks, aplicando ownership e regras básicas de leitura.
 - **Concorrência e integrações:** scheduler local fixed-delay; cliente HTTP outbound com limites de concorrência/fila, cancelamento, retries idempotentes e circuit breaker; cliente de chat compatível com API OpenAI.
-- **Operação e extensibilidade:** health/readiness, métricas Prometheus, CLI `pearfy` com Module Manager para produtos disponíveis, scaffold e `pearfy-bench` para profiling/benchmarks.
+- **Operação e extensibilidade:** health/readiness, métricas Prometheus, CLI `pearfy` com Module Manager, scaffold, `pearfy mcp` read-only para inspeção do projeto/módulos, e `pearfy-bench` para profiling/benchmarks.
 
 Roadmaps 2/3/v1.5 ainda têm entregas ausentes; as matrizes detalhadas estão em `roadmap/ESTADO-IMPLEMENTACAO-ROADMAPS-2-3.md` e `roadmap/ESTADO-IMPLEMENTACAO-V1.5.md`. O escopo é tornar as capacidades Pearfy genéricas e opt-in.
 
@@ -24,9 +24,9 @@ Executados no checkout em macOS arm64, com Apple Swift 6.4:
 
 | Comando | Resultado |
 |---|---|
-| `bash scripts/test-unit.sh` | 100 testes passaram em Debug; sem os hosts de serviços configurados, os testes de integração externa retornam sem conectar. |
-| `bash scripts/test-integrations.sh` | 100 testes passaram em Debug com PostgreSQL e Redis locais reais, incluindo schemas Connect descobertos via `@ContractModel`, Social, Transaction Manager e migration artifacts/plan/locking/drift. |
-| `bash scripts/test-integrations.sh -c release` | Os mesmos 100 testes passaram em Release com integrações reais, incluindo schemas Connect descobertos via `@ContractModel`, Social, Transaction Manager e migration artifacts/plan/locking/drift. |
+| `bash scripts/test-unit.sh` | 101 testes passaram em Debug; sem os hosts de serviços configurados, os testes de integração externa retornam sem conectar. Inclui o teste MCP read-only. |
+| `bash scripts/test-integrations.sh` | 101 testes passaram em Debug com PostgreSQL e Redis locais reais, incluindo schemas Connect descobertos via `@ContractModel`, MCP read-only, Social, Transaction Manager e migration artifacts/plan/locking/drift. |
+| `bash scripts/test-integrations.sh -c release` | Os mesmos 101 testes passaram em Release com integrações reais, incluindo schemas Connect descobertos via `@ContractModel`, MCP read-only, Social, Transaction Manager e migration artifacts/plan/locking/drift. |
 | `bash scripts/verify-aot-snapshot.sh` | Registry AOT gerado corresponde ao snapshot versionado. |
 | Build dos exemplos `GreeterFeature` e `DiscoveryApp` | Ambos compilaram após as macros de entidade/discovery. |
 
@@ -36,6 +36,7 @@ O Module Manager também foi exercitado em um scaffold temporário: `add postgre
 
 - O `PostgresSchemaCompiler` ainda não exporta seus planos como artifacts versionados; essa capacidade é coberta separadamente por `SQLMigrationCatalog`/`SQLMigrationRunner`, com checksum, drift e locking, mas sem rollback plan ou CLI.
 - PearfyConnect gera snapshot de rotas e refs de schema; DTOs precisam de opt-in com `@ContractModel`, e a cobertura de Codable ainda é limitada. Não há pacote `.pearfy`, diff compatível nem SDKs gerados.
+- O servidor MCP só oferece inspeção e planos read-only; não faz code search, aplica mudanças, executa testes ou oferece políticas de autorização por workspace.
 - O Module Manager só instala produtos existentes neste checkout; ainda não há registry assinado/SemVer nem extensões de domínio.
-- PaymentEngine, ORM, Guardian, Webhooks/Outbox/jobs duráveis, logs sanitizados/OTLP, Backoffice/Approvals/CRM, Chatbot, WhatsApp, MCP e gRPC continuam pendentes.
+- PaymentEngine, ORM, Guardian, Webhooks/Outbox/jobs duráveis, logs sanitizados/OTLP, Backoffice/Approvals/CRM, Chatbot, WhatsApp, tools avançadas do MCP e gRPC continuam pendentes.
 - A integração multi-processo/multi-réplica, failover e CI remoto ainda não foram validados.

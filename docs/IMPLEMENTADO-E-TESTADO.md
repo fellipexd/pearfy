@@ -14,7 +14,7 @@
 - **Cache e messaging:** cache local/Redis e broker local/Redis com ack, retry, DLQ e recuperação.
 - **Social v1.5 (slice inicial):** `PearfySocial` define atores, handles validados, visibilidade e contrato do grafo; `PearfySocialPostgres` persiste atores, follows e blocks, aplicando ownership e regras básicas de leitura.
 - **Concorrência e integrações:** scheduler local fixed-delay; cliente HTTP outbound com limites de concorrência/fila, cancelamento, retries idempotentes e circuit breaker; cliente de chat compatível com API OpenAI.
-- **Operação e extensibilidade:** health/readiness, métricas Prometheus, CLI `pearfy` com Module Manager para produtos disponíveis, scaffold e `pearfy-bench` para profiling/benchmarks.
+- **Operação e extensibilidade:** health/readiness, métricas Prometheus, CLI `pearfy` com Module Manager, scaffold, MCP stdio read-only e `pearfy-bench` para profiling/benchmarks.
 
 Os módulos correspondentes estão declarados em `Package.swift`. Detalhes de arquitetura e limitações por área ficam em `docs/01-PLANO-DE-INTEGRACAO.md` e nos documentos `docs/02-*.md` a `docs/11-*.md`.
 
@@ -24,9 +24,9 @@ Executados no checkout em macOS arm64, com Apple Swift 6.4:
 
 | Comando | Resultado |
 |---|---|
-| `bash scripts/test-unit.sh` | 100 testes passaram em Debug; integrações externas sem ambiente configurado retornam sem conectar aos serviços. |
-| `bash scripts/test-integrations.sh` | 100 testes passaram em Debug, incluindo integrações reais com PostgreSQL e Redis locais, Connect schemas, Social graph, Transaction Manager e migration artifacts/plan/locking/drift. |
-| `bash scripts/test-integrations.sh -c release` | Os mesmos 100 testes passaram em Release com integrações reais locais, incluindo SchemaCompiler DDL, Connect schemas, transações/cancelamento, Transaction Manager, migration artifacts/plan/locking/drift, cache, broker e Social graph. |
+| `bash scripts/test-unit.sh` | 101 testes passaram em Debug; integrações externas sem ambiente configurado retornam sem conectar aos serviços. |
+| `bash scripts/test-integrations.sh` | 101 testes passaram em Debug, incluindo integrações reais com PostgreSQL e Redis locais, Connect schemas, MCP read-only, Social graph, Transaction Manager e migration artifacts/plan/locking/drift. |
+| `bash scripts/test-integrations.sh -c release` | Os mesmos 101 testes passaram em Release com integrações reais locais, incluindo SchemaCompiler DDL, Connect schemas, MCP read-only, transações/cancelamento, Transaction Manager, migration artifacts/plan/locking/drift, cache, broker e Social graph. |
 | `swift build -c release` | Build de produção passou. |
 | `bash scripts/verify-aot-snapshot.sh` | O registry AOT gerado corresponde ao snapshot versionado. |
 

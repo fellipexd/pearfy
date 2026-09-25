@@ -32,6 +32,12 @@ struct PearfyCLI {
             guard arguments.count >= 2 else { throw PerformanceCommandError.usage }
             return try PearfyPerformanceCommand.profile(kind: arguments[1], arguments: Array(arguments.dropFirst(2)))
         }
+        if command == "mcp" {
+            guard arguments.count == 1 else { throw CLIError.usage }
+            return try PearfyMCPCommand.run(
+                projectRoot: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            )
+        }
         if command == "modules" {
             return try PearfyModuleCommand.run(
                 Array(arguments.dropFirst()),
@@ -108,6 +114,7 @@ struct PearfyCLI {
       pearfy new <project-name> [--path <directory>] [--framework-path <directory>]
       pearfy modules <list|info <id>|doctor|plan --add|--remove <id>>
       pearfy <add|remove> <module-id> [--dry-run]
+      pearfy mcp
       pearfy benchmark [benchmark options]
       pearfy profile <cpu|memory> -- <program> [arguments...]
       pearfy doctor performance
