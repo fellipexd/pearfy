@@ -25,7 +25,7 @@ Atualizado em 2026-09-25 contra o código e testes do checkout ativo. As pastas 
 
 - **PCON-000 — inventário:** feito.
 - **PCON-001 — Route Groups:** fatia implementada: `@RouteGroup` descreve ID/prefix/SDK targets; `@RestController(group:)` compõe o prefixo, registra o grupo e mantém autorização independente; OpenAPI e descritores de rota podem ser filtrados por grupo.
-- **PCON-002/003 — IR/OpenAPI:** parcial. `PearfyConnectCompiler` gera snapshot JSON determinístico com revision/hash, grupos, operation IDs/path parameters, auth policies e referências request/response; builtins e schemas registrados são resolvidos transitivamente e schemas ausentes bloqueiam compile. OpenAPI exporta grupos e type refs, mas SDK generation permanece desligada; faltam discovery automático de DTOs, `.pearfy`, diff compatível e SDKs.
+- **PCON-002/003 — IR/OpenAPI:** parcial. `PearfyConnectCompiler` gera snapshot JSON determinístico com revision/hash, grupos, operation IDs/path parameters, auth policies e referências request/response; builtins e schemas registrados são resolvidos transitivamente e schemas ausentes bloqueiam compile. `@ContractModel` e `@ContractField` geram descritores para DTOs Codable explicitamente marcados, e o plugin agrega esses schemas por target, incluindo campos escalares/opcionais e helpers de arrays. OpenAPI exporta grupos e type refs, mas SDK generation permanece desligada; faltam cobertura mais ampla de DTOs/Codable, `.pearfy` e diff compatível.
 - **PCON-004–008 — pacote, SDKs e exports:** ausentes; sem SDK iOS/Android/TypeScript gerado, Postman ou cURL individual.
 - **PCON-009–018 — Guardian, compatibilidade, WS/gRPC e payload sealed:** ausentes.
 
@@ -57,7 +57,7 @@ Atualizado em 2026-09-25 contra o código e testes do checkout ativo. As pastas 
 
 1. Fechar G3 com checagem de gaps/removals, rollback plans e comandos seguros de plan/deploy; catálogo versionado e API de plan já existem.
 2. Completar o transaction manager com serialização de acesso ao unit, fault/reconciliation tests de commit unknown e propagation adicional antes de Payments/Approvals.
-3. Completar PCON-002 com schemas request/response provenientes dos entities/DTOs, depois gerar `.pearfy` determinístico e validar paridade antes dos SDKs.
+3. Expandir PCON-002 além dos DTOs marcados com `@ContractModel`, gerar `.pearfy` determinístico e validar diff/paridade antes dos SDKs.
 4. Evoluir Module Manager para manifests versionados/assinados e update SemVer, mantendo rejeição de produtos ainda inexistentes.
 5. Continuar Connect SDKs e extensões por dependências, com credenciais/ambientes reais apenas quando disponíveis.
 6. Acompanhar a evolução das capacidades Social/Identity/DevKit no documento `ESTADO-IMPLEMENTACAO-V1.5.md`, mantendo APIs genéricas, opt-in e sustentadas por código/testes.

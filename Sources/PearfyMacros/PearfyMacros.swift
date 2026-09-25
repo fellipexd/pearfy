@@ -26,6 +26,9 @@ public macro Repository(
 @attached(member, names: named(__pearfy_schema))
 public macro Entity(_ table: String) = #externalMacro(module: "PearfyMacrosImpl", type: "EntityMacro")
 
+@attached(member, names: named(__pearfy_contractSchemas))
+public macro ContractModel() = #externalMacro(module: "PearfyMacrosImpl", type: "ContractModelMacro")
+
 @attached(peer, names: named(__pearfy_marker))
 public macro ID(strategy: SchemaIdentifierStrategy? = nil) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
 
@@ -38,6 +41,9 @@ public macro Column(
     scale: Int? = nil,
     renamedFrom: String? = nil
 ) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
+
+@attached(peer, names: named(__pearfy_marker))
+public macro ContractField(name: String? = nil, required: Bool? = nil) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
 
 @attached(peer, names: named(__pearfy_marker))
 public macro Autowired() = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")

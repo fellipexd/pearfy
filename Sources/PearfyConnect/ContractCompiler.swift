@@ -59,6 +59,14 @@ public struct PearfyContractSchema: Codable, Equatable, Sendable {
         self.items = items
         self.additionalProperties = additionalProperties
     }
+
+    /// Returns the stable ID used for a schema describing an array of `item`.
+    public static func arraySchemaID(for item: PearfyContractSchemaReference) -> String {
+        let digest = SHA256.hash(data: Data("\(item.id):\(item.nullable)".utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+        return "Array_\(digest.prefix(16))"
+    }
 }
 
 public enum PearfyContractSchemaCoverage: String, Codable, Sendable {
@@ -292,10 +300,7 @@ public struct PearfyConnectCompiler: Sendable {
             guard let itemReference = try schemaReference(for: arrayElementType, available: &schemas) else {
                 throw PearfyConnectCompilerError.invalidSchemaDefinition(typeName)
             }
-            let digest = SHA256.hash(data: Data("\(itemReference.id):\(itemReference.nullable)".utf8))
-                .map { String(format: "%02x", $0) }
-                .joined()
-            let arraySchemaID = "Array_\(digest.prefix(16))"
+            let arraySchemaID = PearfyContractSchema.arraySchemaID(for: itemReference)
             let arraySchema = PearfyContractSchema(
                 id: arraySchemaID,
                 type: .array,

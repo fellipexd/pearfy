@@ -1,3 +1,4 @@
+import Foundation
 import PearfyConnect
 import PearfyMacros
 import PearfyWeb
@@ -55,23 +56,16 @@ import Testing
     try await ProfileContractController.__pearfy_registerRoutes(in: router, instance: ProfileContractController())
     try await router.freeze()
 
-    let schemas = [
-        PearfyContractSchema(
-            id: "ProfileInput",
-            type: .object,
-            properties: ["displayName": PearfyContractSchemaReference(id: "String")],
-            required: ["displayName"]
-        ),
-        PearfyContractSchema(
-            id: "ProfileOutput",
-            type: .object,
-            properties: [
-                "id": PearfyContractSchemaReference(id: "UUID"),
-                "displayName": PearfyContractSchemaReference(id: "String")
-            ],
-            required: ["id", "displayName"]
-        )
-    ]
+    let schemas = PearfyGeneratedSchemaRegistry.contractSchemas
+    let profileInputSchema = try #require(schemas.first(where: { $0.id == "ProfileInput" }))
+    #expect(profileInputSchema.properties["display_name"]?.id == "String")
+    let tagsSchemaID = try #require(profileInputSchema.properties["tags"]?.id)
+    let expectedTagsSchemaID = PearfyContractSchema.arraySchemaID(for: PearfyContractSchemaReference(id: "String"))
+    #expect(tagsSchemaID == expectedTagsSchemaID)
+    #expect(schemas.contains(where: { $0.id == expectedTagsSchemaID }))
+    let profileOutputSchema = try #require(schemas.first(where: { $0.id == "ProfileOutput" }))
+    #expect(profileOutputSchema.properties["metadata"] == PearfyContractSchemaReference(id: "ProfileMetadata", nullable: true))
+    #expect(!profileOutputSchema.required.contains("metadata"))
     let compiler = PearfyConnectCompiler()
     let contract = try await compiler.compile(
         router: router,
@@ -81,7 +75,12 @@ import Testing
 
     #expect(contract.schemaCoverage == .typedSchemaReferences)
     #expect(contract.canGenerateSDKs == false)
-    #expect(Set(contract.schemas.map(\.id)).isSuperset(of: ["ProfileInput", "ProfileOutput", "String", "UUID"]))
+    #expect(Set(contract.schemas.map(\.id)).isSuperset(of: ["ProfileInput", "ProfileOutput", "ProfileMetadata", "String", "UUID"]))
+    let tagsSchema = try #require(contract.schemas.first(where: { $0.id == tagsSchemaID }))
+    #expect(tagsSchema.type == .array)
+    #expect(tagsSchema.items?.id == "String")
+    let metadataSchema = try #require(contract.schemas.first(where: { $0.id == "ProfileMetadata" }))
+    #expect(metadataSchema.properties["timezone"]?.id == "String")
     let createOperation = try #require(contract.operations.first(where: { $0.method == "POST" }))
     #expect(createOperation.requestSchema == PearfyContractSchemaReference(id: "ProfileInput"))
     #expect(createOperation.responseSchema == PearfyContractSchemaReference(id: "ProfileOutput"))
@@ -94,18 +93,7 @@ import Testing
     let findOperation = try #require(contract.operations.first(where: { $0.path == "/profiles/{id}" }))
     #expect(findOperation.responseSchema == PearfyContractSchemaReference(id: "ProfileOutput", nullable: true))
 
-    let reorderedSchemas = [
-        PearfyContractSchema(
-            id: "ProfileOutput",
-            type: .object,
-            properties: [
-                "id": PearfyContractSchemaReference(id: "UUID"),
-                "displayName": PearfyContractSchemaReference(id: "String")
-            ],
-            required: ["displayName", "id"]
-        ),
-        schemas[0]
-    ]
+    let reorderedSchemas = Array(schemas.reversed())
     let reorderedContract = try await compiler.compile(
         router: router,
         buildRevision: "typed-schema-revision",
@@ -118,7 +106,7 @@ import Testing
         _ = try await compiler.compile(
             router: router,
             buildRevision: "typed-schema-revision",
-            schemas: [schemas[0]]
+            schemas: schemas.filter { $0.id != "ProfileOutput" }
         )
     } catch PearfyConnectCompilerError.missingSchema("ProfileOutput") {
         missingSchemaRejected = true
@@ -168,7 +156,7 @@ private struct ProfileContractController: Sendable {
     @Post
     @PermitAll
     func create(@RequestBody input: ProfileInput) -> ProfileOutput {
-        ProfileOutput(id: "profile-1", displayName: input.displayName)
+        ProfileOutput(id: UUID(), displayName: input.displayName, metadata: nil)
     }
 
     @Get("/all")
@@ -180,11 +168,26 @@ private struct ProfileContractController: Sendable {
     func find(@PathVariable id: String) -> ProfileOutput? { nil }
 }
 
-private struct ProfileInput: Codable, Sendable {
+@ContractModel
+struct ProfileInput: Codable, Sendable {
+    @ContractField(name: "display_name")
     let displayName: String
+    let tags: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case displayName = "display_name"
+        case tags
+    }
 }
 
-private struct ProfileOutput: Codable, Sendable {
-    let id: String
+@ContractModel
+struct ProfileOutput: Codable, Sendable {
+    let id: UUID
     let displayName: String
+    let metadata: ProfileMetadata?
+}
+
+@ContractModel
+struct ProfileMetadata: Codable, Sendable {
+    let timezone: String?
 }
