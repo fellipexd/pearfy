@@ -3,10 +3,12 @@ import Logging
 import PearfyContext
 import PearfyData
 import PearfyObservability
+import PearfyTransactions
 import PostgresNIO
 
-public actor PearfyPostgresDatabase: ApplicationLifecycle, SQLDatabase {
+public actor PearfyPostgresDatabase: ApplicationLifecycle, SQLDatabase, PearfyTransactionalStore {
     public nonisolated let name = "Pearfy PostgreSQL"
+    public typealias UnitOfWork = any SQLTransaction
 
     private let client: PostgresClient
     private let logger: Logger
@@ -84,12 +86,62 @@ public actor PearfyPostgresDatabase: ApplicationLifecycle, SQLDatabase {
     public func withTransaction<Value: Sendable>(
         _ operation: @Sendable (any SQLTransaction) async throws -> Value
     ) async throws -> Value {
+        try await withTransaction(transactionID: UUID(), operation)
+    }
+
+    public func withTransaction<Value: Sendable>(
+        transactionID: UUID,
+        _ operation: @Sendable (any SQLTransaction) async throws -> Value
+    ) async throws -> Value {
         try ensureStarted()
-        return try await perform("transaction") {
-            try await client.withTransaction(logger: logger) { connection in
-                try await operation(PostgresTransaction(connection: connection, logger: logger))
+        do {
+            return try await perform("transaction") {
+                try await client.withTransaction(logger: logger) { connection in
+                    try await operation(PostgresTransaction(connection: connection, logger: logger))
+                }
             }
+        } catch let error as PostgresTransactionError {
+            throw classifiedTransactionError(error, transactionID: transactionID)
         }
+    }
+
+    public func withMigrationLock<Value: Sendable>(
+        key: String,
+        _ operation: @Sendable (any SQLTransaction) async throws -> Value
+    ) async throws -> Value {
+        try ensureStarted()
+        let transactionID = UUID()
+        do {
+            return try await perform("migration") {
+                try await client.withTransaction(logger: logger) { connection in
+                    let transaction = PostgresTransaction(connection: connection, logger: logger)
+                    try await transaction.execute(SQLQuery(
+                        unsafeSQL: "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+                        parameters: [.text(key)]
+                    ))
+                    return try await operation(transaction)
+                }
+            }
+        } catch let error as PostgresTransactionError {
+            throw classifiedTransactionError(error, transactionID: transactionID)
+        }
+    }
+
+    private func classifiedTransactionError(
+        _ error: PostgresTransactionError,
+        transactionID: UUID
+    ) -> any Error {
+        if let commitError = error.commitError {
+            return TransactionCommitOutcomeUnknown(
+                transactionID: transactionID,
+                reason: String(describing: commitError)
+            )
+        }
+        if let closureError = error.closureError {
+            return error.rollbackError == nil ? closureError : error
+        }
+        if let beginError = error.beginError { return beginError }
+        return error
     }
 
     private func perform<Value: Sendable>(

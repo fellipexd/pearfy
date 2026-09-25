@@ -35,22 +35,23 @@ Adicionar um eixo de **performance by design** à execução do roadmap existent
 - HTTP e dependências de infraestrutura fora de Core/DI/Context.
 - Segurança, observabilidade e testes continuam transversais; performance não justifica remoção de verificações.
 
-## Implementação deste checkout
+## Implementação atual deste checkout
 
-Este checkout implementa DI/request scopes, contexto e lifecycle; HTTP/NIO, validação e políticas JWT/API-key; SQL parametrizado e adapter PostgreSQL; cache local e Redis; broker em memória e Redis; scheduler local de fixed-delay; client HTTP outbound com concorrência/fila limitadas, retry/circuit breaker; adapter de chat OpenAI-compatible; e health/readiness/métricas Prometheus. O escopo e as limitações atuais de cada módulo estão em `backlog/PERFORMANCE-BACKLOG.md` e nos documentos por área. `pearfy new` gera um app HTTP executável; `pearfy-bench` mede DI, HTTP, observability e adapters locais.
+Este checkout implementa DI/request scopes, contexto e lifecycle; HTTP/NIO e Route Groups; macros/discovery de componentes e entidades; UUIDv7, SchemaIR e compilador PostgreSQL inicial; migrations com checksum/drift e lock transacional; `PearfyTransactions` com REQUIRED propagation sobre a unit física do PostgreSQL; snapshot Connect de rotas e Module Manager dos produtos existentes; um slice Social com atores, grafo PostgreSQL e políticas básicas de visibilidade; validação e políticas JWT/API-key; SQL parametrizado; cache local/Redis; broker em memória/Redis; scheduler local fixed-delay; client HTTP outbound com limites/retry/circuit breaker; adapter de chat OpenAI-compatible; e health/readiness/métricas Prometheus. Roadmaps 2/3/v1.5 ainda têm entregas ausentes; as matrizes em `roadmap/ESTADO-IMPLEMENTACAO-ROADMAPS-2-3.md` e `roadmap/ESTADO-IMPLEMENTACAO-V1.5.md` registram cobertura e lacunas.
 
-Os CSVs em `Benchmarks/Baselines/` são medições locais, não SLAs; os baselines atuais estão associados ao commit local `ce5bef0`. O snapshot AOT também tem verificação reproduzível com `bash scripts/verify-aot-snapshot.sh`. O arquivo-fonte do roadmap principal citado pelos documentos (`docs/01-ROADMAP.md`, além de `docs/06-BACKLOG.md`) não está presente neste checkout; o adendo de performance está disponível, mas o aceite global do roadmap original não pode ser conferido sem esses documentos. `benchmark-observability.sh` compara métricas HTTP ligadas/desligadas; `benchmark-modules.sh` mede adapters locais em memória/stub.
+Os CSVs em `Benchmarks/Baselines/` são medições locais, não SLAs; os baselines atuais estão associados ao commit local `ce5bef0`. O snapshot AOT tem verificação reproduzível com `bash scripts/verify-aot-snapshot.sh`. Os roadmaps 2/3/v1.5 estão arquivados em `roadmap/`; as matrizes de implementação indicam os gates pendentes. `benchmark-observability.sh` compara métricas HTTP ligadas/desligadas; `benchmark-modules.sh` mede adapters locais em memória/stub.
 
-A suíte tem 73 testes; os cinco testes de integração com serviços externos rodam quando configurados. A suíte foi executada em macOS com PostgreSQL e Redis locais habilitados, e passou em Debug e Release:
+A suíte tem 97 testes; oito testes de integração com serviços externos rodam quando configurados. A suíte completa passou em macOS com PostgreSQL e Redis locais habilitados em Debug e Release:
 
 ```bash
 bash scripts/test-unit.sh
-bash scripts/test-unit.sh -c release
+bash scripts/test-integrations.sh
+bash scripts/test-integrations.sh -c release
 ```
 
 Para rodar incluindo as integrações locais, inicie PostgreSQL/Redis e use `bash scripts/test-integrations.sh` (aceita `PEARFY_TEST_POSTGRES_*` e `PEARFY_TEST_REDIS_*`).
 
-O workflow `.github/workflows/performance.yml` configura release build/testes em macOS/Linux, integrações PostgreSQL/Redis no Linux e relatório HTTP manual/semanal não bloqueante; aguarda uma execução remota para validar os runners. Gates ainda pendentes: `xctrace`/Instruments, soak de longa duração e validação de failover do broker multi-host. CPU e memória têm fallback local via `sample` e RSS (`ps`). O roadmap principal não está neste checkout; a cobertura aqui é do adendo de performance.
+O workflow `.github/workflows/performance.yml` configura release build/testes em macOS/Linux, integrações PostgreSQL/Redis no Linux e relatório HTTP manual/semanal não bloqueante; aguarda execução remota para validar os runners. Gates pendentes dos roadmaps 2/3/v1.5 estão nas matrizes em `roadmap/`; CPU/memória têm fallback local via `sample`, `heap` e RSS (`ps`).
 
 ## CLI disponível
 
@@ -64,7 +65,10 @@ bash scripts/benchmark-observability.sh --runs 5 --http-requests 500
 bash scripts/benchmark-modules.sh --runs 5 --resolves 1000 --concurrency 10
 swift run pearfy profile cpu -- ./MinhaApi
 swift run pearfy doctor performance
+python3 scripts/soak-http.py --target .build/debug/MinhaApi --duration-seconds 60 --workers 16
 bash scripts/verify-aot-snapshot.sh
+pearfy modules list
+pearfy modules plan --add postgres
 ```
 
 O scaffold usa um caminho local absoluto para este checkout do Pearfy; `--framework-path` ou `PEARFY_FRAMEWORK_PATH` escolhem outro checkout. Profiling usa `xcrun xctrace` quando disponível; neste host, CPU usa `/usr/bin/sample` e memória usa amostragem RSS via `ps`. Linux pode usar `perf`, `heaptrack` ou `valgrind`. Veja `swift run pearfy --help`.

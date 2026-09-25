@@ -17,6 +17,7 @@ public actor HTTPRouter {
         let canonicalPath: String
         let segments: [Segment]
         let literalCount: Int
+        let group: String?
         let access: HTTPRouteAccess
         let handler: HTTPRouteHandler
     }
@@ -26,6 +27,7 @@ public actor HTTPRouter {
     private let maximumInFlightRequests: Int?
     private let requestDeadline: Duration?
     private var routes: [Route] = []
+    private var groupsByName: [String: HTTPRouteGroup] = [:]
     private var routeKeys: Set<String> = []
     private var middleware: [HTTPMiddleware] = []
     private var frozen = false
@@ -47,18 +49,34 @@ public actor HTTPRouter {
         _ method: HTTPMethod,
         path: String,
         access: HTTPRouteAccess = .permitAll,
+        group: String? = nil,
         handler: @escaping HTTPRouteHandler
     ) throws {
         guard !frozen else { throw HTTPError.routerFrozen }
-        let parsed = try Self.parseRoute(path)
+        let registeredGroup: HTTPRouteGroup?
+        let registeredPath: String
+        if let group {
+            guard let descriptor = groupsByName[group] else {
+                throw HTTPRouteGroupError.notRegistered(group)
+            }
+            registeredGroup = descriptor
+            registeredPath = Self.joinedPath(descriptor.prefix, path)
+        } else {
+            registeredGroup = nil
+            registeredPath = path
+        }
+        let parsed = try Self.parseRoute(registeredPath)
         let key = "\(method.description) \(parsed.canonical)"
-        guard routeKeys.insert(key).inserted else { throw HTTPError.duplicateRoute("\(method) \(path)") }
+        guard routeKeys.insert(key).inserted else {
+            throw HTTPError.duplicateRoute("\(method) \(registeredPath)")
+        }
         routes.append(Route(
             method: method,
-            path: path,
+            path: registeredPath,
             canonicalPath: parsed.canonical,
             segments: parsed.segments,
             literalCount: parsed.literalCount,
+            group: registeredGroup?.name,
             access: access,
             handler: handler
         ))
@@ -69,12 +87,38 @@ public actor HTTPRouter {
         }
     }
 
-    public func get(_ path: String, access: HTTPRouteAccess = .permitAll, handler: @escaping HTTPRouteHandler) throws {
-        try on(.get, path: path, access: access, handler: handler)
+    /// Registers or confirms a route group before its routes are declared.
+    /// Re-registering the same descriptor is safe for controllers in separate
+    /// files; changing its policy or prefix is rejected.
+    public func registerGroup(_ group: HTTPRouteGroup) throws {
+        guard !frozen else { throw HTTPError.routerFrozen }
+        try Self.validate(group)
+        if let existing = groupsByName[group.name] {
+            guard existing == group else { throw HTTPRouteGroupError.conflictingDefinition(group.name) }
+            return
+        }
+        guard !groupsByName.values.contains(where: { $0.prefix == group.prefix }) else {
+            throw HTTPRouteGroupError.duplicatePrefix(group.prefix)
+        }
+        groupsByName[group.name] = group
     }
 
-    public func post(_ path: String, access: HTTPRouteAccess = .permitAll, handler: @escaping HTTPRouteHandler) throws {
-        try on(.post, path: path, access: access, handler: handler)
+    public func get(
+        _ path: String,
+        access: HTTPRouteAccess = .permitAll,
+        group: String? = nil,
+        handler: @escaping HTTPRouteHandler
+    ) throws {
+        try on(.get, path: path, access: access, group: group, handler: handler)
+    }
+
+    public func post(
+        _ path: String,
+        access: HTTPRouteAccess = .permitAll,
+        group: String? = nil,
+        handler: @escaping HTTPRouteHandler
+    ) throws {
+        try on(.post, path: path, access: access, group: group, handler: handler)
     }
 
     public func use(_ middleware: @escaping HTTPMiddleware) throws {
@@ -125,9 +169,25 @@ public actor HTTPRouter {
 
     public func currentInFlightRequests() -> Int { inFlightRequests }
 
-    public func openAPIDocument(title: String, version: String) throws -> Data {
+    public func routeGroups() -> [HTTPRouteGroup] {
+        groupsByName.values.sorted { $0.name < $1.name }
+    }
+
+    public func contractOperations(group: String? = nil) throws -> [HTTPRouteContractOperation] {
+        if let group, groupsByName[group] == nil { throw HTTPRouteGroupError.notRegistered(group) }
+        return routes
+            .filter { group == nil || $0.group == group }
+            .map { HTTPRouteContractOperation(method: $0.method, path: $0.path, access: $0.access, group: $0.group) }
+            .sorted {
+                if $0.path != $1.path { return $0.path < $1.path }
+                return $0.method.description < $1.method.description
+            }
+    }
+
+    public func openAPIDocument(title: String, version: String, group: String? = nil) throws -> Data {
+        if let group, groupsByName[group] == nil { throw HTTPRouteGroupError.notRegistered(group) }
         var paths: [String: [String: Any]] = [:]
-        for route in routes {
+        for route in routes where group == nil || route.group == group {
             let parameters: [[String: Any]] = route.segments.compactMap { segment in
                 guard case .parameter(let name) = segment else { return nil }
                 return [
@@ -150,6 +210,11 @@ public actor HTTPRouter {
             case .roles(let roles):
                 operation["security"] = [["bearerAuth": [] as [String]]]
                 operation["x-pearfy-roles"] = roles.sorted()
+            }
+            if let routeGroupName = route.group, let routeGroup = groupsByName[routeGroupName] {
+                operation["x-pearfy-group"] = routeGroup.name
+                operation["x-pearfy-contract-version"] = routeGroup.contractVersion
+                operation["x-pearfy-sdk-targets"] = routeGroup.sdkTargets.map(\.rawValue).sorted()
             }
             paths[route.path, default: [:]][route.method.description.lowercased()] = operation
         }
@@ -278,6 +343,40 @@ public actor HTTPRouter {
         }
         let canonical = "/" + canonicalSegments.joined(separator: "/")
         return (segments, canonical, literalCount)
+    }
+
+    private static func validate(_ group: HTTPRouteGroup) throws {
+        guard let first = group.name.utf8.first,
+              (97...122).contains(first),
+              group.name.utf8.allSatisfy({ (97...122).contains($0) || (48...57).contains($0) || $0 == 45 }) else {
+            throw HTTPRouteGroupError.invalidName(group.name)
+        }
+        guard group.contractVersion.split(separator: ".").count >= 2,
+              group.contractVersion.allSatisfy({ $0.isASCII && ($0.isNumber || $0 == "." || $0.isLetter || $0 == "-") }) else {
+            throw HTTPRouteGroupError.invalidContractVersion(group.contractVersion)
+        }
+        guard group.prefix.hasPrefix("/"),
+              group.prefix != "/",
+              !group.prefix.hasSuffix("/"),
+              !group.prefix.contains("//"),
+              !group.prefix.contains(where: { $0 == "?" || $0 == "#" || $0 == "%" }) else {
+            throw HTTPRouteGroupError.invalidPrefix(group.prefix)
+        }
+        let parsed: (segments: [Segment], canonical: String, literalCount: Int)
+        do {
+            parsed = try parseRoute(group.prefix)
+        } catch {
+            throw HTTPRouteGroupError.invalidPrefix(group.prefix)
+        }
+        guard !parsed.segments.isEmpty,
+              parsed.segments.allSatisfy({ if case .literal = $0 { true } else { false } }) else {
+            throw HTTPRouteGroupError.invalidPrefix(group.prefix)
+        }
+    }
+
+    private static func joinedPath(_ prefix: String, _ path: String) -> String {
+        let suffix = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return suffix.isEmpty ? prefix : "\(prefix)/\(suffix)"
     }
 
     private static func match(_ pattern: [Segment], path: String) -> [String: String]? {

@@ -1,0 +1,3 @@
+# Prompt para evoluir o FRAMEWORK Pearfy v1.5
+
+Inspecione branch real, Module Registry, roadmap v1.4+v1.5. Planeje incrementos opt-in para PearfySocial, SocialLogin e DevKit (Skills+MCP+Guardian) com contratos, Swift Package products, CLI e testes. Não assuma API de roadmap implementada; código atual prevalece. Priorize capabilities genéricas reutilizáveis, independentes de um domínio consumidor. Segurança, privacidade, migrations versionadas e locks multi-instância são requisitos transversais. Providers IA centralizados no runtime PearfyAI, separados da IA de desenvolvimento. Não faça deploy nem aplique migrations destrutivas sem autorização. Reporte comandos/resultados reais e status por capability.

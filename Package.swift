@@ -11,12 +11,16 @@ let package = Package(
         .library(name: "PearfyConfiguration", targets: ["PearfyConfiguration"]),
         .library(name: "PearfyContext", targets: ["PearfyContext"]),
         .library(name: "PearfyWeb", targets: ["PearfyWeb"]),
+        .library(name: "PearfyConnect", targets: ["PearfyConnect"]),
         .library(name: "PearfyNIO", targets: ["PearfyNIO"]),
         .library(name: "PearfyValidation", targets: ["PearfyValidation"]),
         .library(name: "PearfySecurity", targets: ["PearfySecurity"]),
         .library(name: "PearfyData", targets: ["PearfyData"]),
+        .library(name: "PearfyTransactions", targets: ["PearfyTransactions"]),
         .library(name: "PearfyPostgres", targets: ["PearfyPostgres"]),
         .library(name: "PearfyRedis", targets: ["PearfyRedis"]),
+        .library(name: "PearfySocial", targets: ["PearfySocial"]),
+        .library(name: "PearfySocialPostgres", targets: ["PearfySocialPostgres"]),
         .library(name: "PearfyCache", targets: ["PearfyCache"]),
         .library(name: "PearfyMessaging", targets: ["PearfyMessaging"]),
         .library(name: "PearfyJobs", targets: ["PearfyJobs"]),
@@ -44,17 +48,32 @@ let package = Package(
         .target(name: "PearfyConfiguration", dependencies: ["PearfyCore"]),
         .target(name: "PearfyContext", dependencies: ["PearfyCore", "PearfyDI", "PearfyConfiguration"]),
         .target(name: "PearfyWeb"),
+        .target(
+            name: "PearfyConnect",
+            dependencies: [
+                "PearfyWeb",
+                .product(name: "Crypto", package: "swift-crypto")
+            ]
+        ),
         .target(name: "PearfyValidation", dependencies: ["PearfyCore"]),
         .target(
             name: "PearfySecurity",
             dependencies: ["PearfyWeb", .product(name: "Crypto", package: "swift-crypto")]
         ),
-        .target(name: "PearfyData", dependencies: ["PearfyCore"]),
+        .target(
+            name: "PearfyData",
+            dependencies: [
+                "PearfyCore",
+                .product(name: "Crypto", package: "swift-crypto")
+            ]
+        ),
+        .target(name: "PearfyTransactions"),
         .target(
             name: "PearfyPostgres",
             dependencies: [
                 "PearfyContext",
                 "PearfyData",
+                "PearfyTransactions",
                 "PearfyObservability",
                 .product(name: "PostgresNIO", package: "postgres-nio"),
                 .product(name: "Logging", package: "swift-log")
@@ -62,6 +81,16 @@ let package = Package(
         ),
         .target(name: "PearfyCache", dependencies: ["PearfyObservability"]),
         .target(name: "PearfyMessaging", dependencies: ["PearfyCore"]),
+        .target(name: "PearfySocial", dependencies: ["PearfyData"]),
+        .target(
+            name: "PearfySocialPostgres",
+            dependencies: [
+                "PearfySocial",
+                "PearfyData",
+                "PearfyPostgres",
+                .product(name: "PostgresNIO", package: "postgres-nio")
+            ]
+        ),
         .target(name: "PearfyJobs", dependencies: ["PearfyContext"]),
         .target(name: "PearfyCloud", dependencies: ["PearfyObservability"]),
         .target(name: "PearfyAI", dependencies: ["PearfyCloud"]),
@@ -88,7 +117,10 @@ let package = Package(
             ]
         ),
         .target(name: "PearfyTesting", dependencies: ["PearfyDI"]),
-        .target(name: "PearfyMacros", dependencies: ["PearfyDI", "PearfyWeb", "PearfyValidation", "PearfyMacrosImpl"]),
+        .target(
+            name: "PearfyMacros",
+            dependencies: ["PearfyDI", "PearfyWeb", "PearfyValidation", "PearfyData", "PearfyMacrosImpl"]
+        ),
         .macro(
             name: "PearfyMacrosImpl",
             dependencies: [
@@ -130,7 +162,7 @@ let package = Package(
                 .product(name: "NIOPosix", package: "swift-nio")
             ]
         ),
-        .target(name: "PearfyCLIKit"),
+        .target(name: "PearfyCLIKit", resources: [.process("module-registry.json")]),
         .executableTarget(name: "PearfyCLI", dependencies: ["PearfyCLIKit"]),
         .executableTarget(
             name: "HelloPearfy",
@@ -145,11 +177,15 @@ let package = Package(
                 "PearfyConfiguration",
                 "PearfyContext",
                 "PearfyWeb",
+                "PearfyConnect",
                 "PearfyNIO",
                 "PearfyValidation",
                 "PearfySecurity",
                 "PearfyData",
+                "PearfyTransactions",
                 "PearfyPostgres",
+                "PearfySocial",
+                "PearfySocialPostgres",
                 .product(name: "PostgresNIO", package: "postgres-nio"),
                 "PearfyRedis",
                 "PearfyCache",

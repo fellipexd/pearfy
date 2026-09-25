@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "modules": [
+    {
+      "id": "http",
+      "summary": "HTTP/NIO, controller macros, configuration and application context",
+      "requires": [],
+      "products": ["PearfyConfiguration", "PearfyContext", "PearfyMacros", "PearfyNIO", "PearfyValidation", "PearfyWeb"]
+    },
+    {
+      "id": "security",
+      "summary": "JWT, API-key and authorization middleware",
+      "requires": ["http"],
+      "products": ["PearfySecurity"]
+    },
+    {
+      "id": "social",
+      "summary": "Social actor and graph contracts with privacy-aware visibility",
+      "requires": ["data", "security"],
+      "products": ["PearfySocial"]
+    },
+    {
+      "id": "social-postgres",
+      "summary": "PostgreSQL persistence adapter for PearfySocial graph operations",
+      "requires": ["social", "postgres"],
+      "products": ["PearfySocialPostgres"]
+    },
+    {
+      "id": "connect",
+      "summary": "Route groups and route-level contract metadata; SDK generation remains incomplete",
+      "requires": ["http"],
+      "products": ["PearfyConnect"]
+    },
+    {
+      "id": "data",
+      "summary": "Typed SQL builders, schema descriptors and migration planning",
+      "requires": ["http"],
+      "products": ["PearfyData"]
+    },
+    {
+      "id": "transactions",
+      "summary": "Generic REQUIRED transaction manager and unit-of-work contract",
+      "requires": [],
+      "products": ["PearfyTransactions"]
+    },
+    {
+      "id": "postgres",
+      "summary": "PostgreSQL queries, pool, migrations and transactions",
+      "requires": ["data", "transactions"],
+      "products": ["PearfyPostgres"]
+    },
+    {
+      "id": "cache",
+      "summary": "Bounded in-memory cache",
+      "requires": ["http"],
+      "products": ["PearfyCache"]
+    },
+    {
+      "id": "messaging",
+      "summary": "In-memory bounded message broker",
+      "requires": ["http"],
+      "products": ["PearfyMessaging"]
+    },
+    {
+      "id": "redis",
+      "summary": "Redis cache and persistent message broker",
+      "requires": ["cache", "messaging"],
+      "products": ["PearfyRedis"]
+    },
+    {
+      "id": "jobs",
+      "summary": "Local fixed-delay scheduler",
+      "requires": ["http"],
+      "products": ["PearfyJobs"]
+    },
+    {
+      "id": "cloud",
+      "summary": "Outbound HTTP concurrency limits and resilience policies",
+      "requires": ["http"],
+      "products": ["PearfyCloud"]
+    },
+    {
+      "id": "ai",
+      "summary": "OpenAI-compatible chat client",
+      "requires": ["cloud"],
+      "products": ["PearfyAI"]
+    },
+    {
+      "id": "observability",
+      "summary": "Health checks and Prometheus metrics",
+      "requires": ["http"],
+      "products": ["PearfyObservability"]
+    }
+  ]
+}

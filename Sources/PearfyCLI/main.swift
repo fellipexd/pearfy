@@ -32,6 +32,23 @@ struct PearfyCLI {
             guard arguments.count >= 2 else { throw PerformanceCommandError.usage }
             return try PearfyPerformanceCommand.profile(kind: arguments[1], arguments: Array(arguments.dropFirst(2)))
         }
+        if command == "modules" {
+            return try PearfyModuleCommand.run(
+                Array(arguments.dropFirst()),
+                projectRoot: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            )
+        }
+        if command == "add" || command == "remove" {
+            guard arguments.count == 2 || (arguments.count == 3 && arguments[2] == "--dry-run") else {
+                throw CLIError.usage
+            }
+            return try PearfyModuleCommand.modify(
+                command,
+                module: arguments[1],
+                projectRoot: URL(fileURLWithPath: FileManager.default.currentDirectoryPath),
+                dryRun: arguments.count == 3
+            )
+        }
         guard command == "new" else { throw CLIError.unknownCommand(command) }
         guard arguments.count >= 2 else {
             throw CLIError.usage
@@ -89,12 +106,15 @@ struct PearfyCLI {
 
     Usage:
       pearfy new <project-name> [--path <directory>] [--framework-path <directory>]
+      pearfy modules <list|info <id>|doctor|plan --add|--remove <id>>
+      pearfy <add|remove> <module-id> [--dry-run]
       pearfy benchmark [benchmark options]
       pearfy profile <cpu|memory> -- <program> [arguments...]
       pearfy doctor performance
       pearfy --help
 
     `new` creates an executable package linked to a local Pearfy checkout.
+    `modules` lists available products and checks a generated project's selection.
     `benchmark` runs the DI baseline tool; profiling uses host-native tools.
     Set PEARFY_FRAMEWORK_PATH or pass --framework-path when using a relocated CLI.
     """
@@ -109,7 +129,7 @@ private enum CLIError: Error, CustomStringConvertible {
 
     var description: String {
         switch self {
-        case .usage: "Usage: pearfy new <project-name> [--path <directory>] [--framework-path <directory>]"
+        case .usage: "Usage: pearfy new <project-name> [--path <directory>] [--framework-path <directory>] | pearfy modules <list|info|doctor|plan> | pearfy <add|remove> <module-id> [--dry-run]"
         case .missingValue(let option): "missing value for \(option)"
         case .duplicateOption(let option): "option provided more than once: \(option)"
         case .unknownOption(let option): "unknown option: \(option)"

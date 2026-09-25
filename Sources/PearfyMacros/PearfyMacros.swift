@@ -1,4 +1,5 @@
 import PearfyDI
+import PearfyData
 import PearfyWeb
 
 @attached(member, names: arbitrary)
@@ -22,6 +23,22 @@ public macro Repository(
     scope: ServiceContainer.Scope = .singleton
 ) = #externalMacro(module: "PearfyMacrosImpl", type: "ComponentMacro")
 
+@attached(member, names: named(__pearfy_schema))
+public macro Entity(_ table: String) = #externalMacro(module: "PearfyMacrosImpl", type: "EntityMacro")
+
+@attached(peer, names: named(__pearfy_marker))
+public macro ID(strategy: SchemaIdentifierStrategy? = nil) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
+
+@attached(peer, names: named(__pearfy_marker))
+public macro Column(
+    name: String? = nil,
+    nullable: Bool? = nil,
+    unique: Bool = false,
+    precision: Int? = nil,
+    scale: Int? = nil,
+    renamedFrom: String? = nil
+) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
+
 @attached(peer, names: named(__pearfy_marker))
 public macro Autowired() = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
 
@@ -38,7 +55,15 @@ public macro Primary() = #externalMacro(module: "PearfyMacrosImpl", type: "Marke
 public macro Bind(_ type: Any.Type) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
 
 @attached(member, names: arbitrary)
-public macro RestController(_ path: String = "") = #externalMacro(module: "PearfyMacrosImpl", type: "RestControllerMacro")
+public macro RestController(_ path: String = "", group: Any.Type? = nil) = #externalMacro(module: "PearfyMacrosImpl", type: "RestControllerMacro")
+
+@attached(member, names: named(__pearfy_routeGroup))
+public macro RouteGroup(
+    name: String,
+    prefix: String,
+    sdk: [HTTPRouteSDKTarget],
+    contractVersion: String = "1.0"
+) = #externalMacro(module: "PearfyMacrosImpl", type: "RouteGroupMacro")
 
 @attached(peer, names: named(__pearfy_marker))
 public macro Get(_ path: String = "") = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")

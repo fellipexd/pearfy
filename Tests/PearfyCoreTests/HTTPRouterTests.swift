@@ -146,6 +146,83 @@ import FoundationNetworking
     #expect(parameters.first?["required"] as? Bool == true)
 }
 
+@Test func routeGroupScopesPathsAndContractExportsWithoutGrantingAccess() async throws {
+    let router = HTTPRouter()
+    try await router.get("/private") { _ in .text("private") }
+    try await MobileRouteController.__pearfy_registerRoutes(in: router, instance: MobileRouteController())
+    try await router.freeze()
+
+    let anonymous = await router.handle(try HTTPRequest(method: .get, target: "/app/auth/login"))
+    #expect(anonymous.status == HTTPStatus.unauthorized.rawValue)
+
+    let authenticatedRequest = try HTTPRequest(method: .get, target: "/app/auth/login")
+        .addingContextValue(HTTPRequest.authenticatedContextKey, value: "true")
+    let authenticated = await router.handle(authenticatedRequest)
+    #expect(String(decoding: authenticated.body, as: UTF8.self) == "login")
+    #expect((await router.handle(try HTTPRequest(method: .get, target: "/auth/login"))).status == HTTPStatus.notFound.rawValue)
+
+    let groups = await router.routeGroups()
+    #expect(groups.count == 1)
+    #expect(groups.first?.name == "mobile")
+    #expect(groups.first?.prefix == "/app")
+    #expect(groups.first?.sdkTargets == Set([.ios, .android]))
+
+    let operations = try await router.contractOperations(group: "mobile")
+    #expect(operations.count == 1)
+    #expect(operations.first?.path == "/app/auth/login")
+    #expect(operations.first?.group == "mobile")
+    #expect(try await router.contractOperations().count == 2)
+
+    let data = try await router.openAPIDocument(title: "Mobile", version: "1", group: "mobile")
+    let document = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let paths = try #require(document["paths"] as? [String: Any])
+    #expect(paths.count == 1)
+    let pathItem = try #require(paths["/app/auth/login"] as? [String: Any])
+    let operation = try #require(pathItem["get"] as? [String: Any])
+    #expect(operation["x-pearfy-group"] as? String == "mobile")
+    #expect(operation["x-pearfy-sdk-targets"] as? [String] == ["android", "ios"])
+    #expect(operation["security"] as? [[String: [String]]] == [["bearerAuth": []]])
+
+    var unknownGroupRejected = false
+    do {
+        _ = try await router.openAPIDocument(title: "Unknown", version: "1", group: "missing")
+    } catch HTTPRouteGroupError.notRegistered("missing") {
+        unknownGroupRejected = true
+    }
+    #expect(unknownGroupRejected)
+}
+
+@Test func routeGroupsRejectConflictingAndUnsafeDescriptors() async throws {
+    let router = HTTPRouter()
+    let group = HTTPRouteGroup(name: "public", prefix: "/public", sdkTargets: [.ios, .typescript])
+    try await router.registerGroup(group)
+    try await router.registerGroup(group)
+
+    var conflictingDefinitionRejected = false
+    do {
+        try await router.registerGroup(HTTPRouteGroup(name: "public", prefix: "/internal", sdkTargets: [.ios]))
+    } catch HTTPRouteGroupError.conflictingDefinition("public") {
+        conflictingDefinitionRejected = true
+    }
+    #expect(conflictingDefinitionRejected)
+
+    var duplicatePrefixRejected = false
+    do {
+        try await router.registerGroup(HTTPRouteGroup(name: "internal", prefix: "/public", sdkTargets: []))
+    } catch HTTPRouteGroupError.duplicatePrefix("/public") {
+        duplicatePrefixRejected = true
+    }
+    #expect(duplicatePrefixRejected)
+
+    var unsafePrefixRejected = false
+    do {
+        try await router.registerGroup(HTTPRouteGroup(name: "unsafe", prefix: "/../escape", sdkTargets: []))
+    } catch HTTPRouteGroupError.invalidPrefix("/../escape") {
+        unsafePrefixRejected = true
+    }
+    #expect(unsafePrefixRejected)
+}
+
 @Test func restControllerMacrosGenerateBoundRoutes() async throws {
     let router = HTTPRouter()
     try await MacroGreetingController.__pearfy_registerRoutes(in: router, instance: MacroGreetingController())
@@ -410,6 +487,15 @@ private struct MacroGreetingController: Sendable {
     func created() -> String {
         "created"
     }
+}
+
+@RouteGroup(name: "mobile", prefix: "/app", sdk: [.ios, .android], contractVersion: "1.0")
+private enum MobileAPI {}
+
+@RestController("/auth", group: MobileAPI.self)
+private struct MobileRouteController: Sendable {
+    @Get("/login")
+    func login() -> String { "login" }
 }
 
 private struct MacroGreetingPayload: Codable, Sendable {

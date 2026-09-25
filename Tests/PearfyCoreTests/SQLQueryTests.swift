@@ -34,6 +34,22 @@ import Testing
     #expect(unboundedUpdateRejected)
 }
 
+@Test func uuidV7EncodesUnixMillisecondsVersionAndRFCVariant() {
+    let beforeMilliseconds = UInt64(Date().timeIntervalSince1970 * 1_000)
+    let identifier = UUIDv7.generate()
+    let afterMilliseconds = UInt64(Date().timeIntervalSince1970 * 1_000)
+    let bytes = identifier.uuid
+
+    #expect(bytes.6 >> 4 == 7)
+    #expect(bytes.8 >> 6 == 2)
+    let timestamp = UUIDv7.timestampMilliseconds(from: identifier)
+    #expect(timestamp != nil)
+    if let timestamp {
+        #expect(timestamp >= beforeMilliseconds)
+        #expect(timestamp <= afterMilliseconds)
+    }
+}
+
 @Test func migrationRunnerAppliesEachVersionOnceInsideTransactions() async throws {
     let store = MigrationStore()
     let database = FakeDatabase(store: store)
@@ -52,20 +68,105 @@ import Testing
     #expect(executed.filter { $0 == "CREATE TABLE accounts (id BIGINT)" }.count == 1)
 }
 
+@Test func migrationRunnerDetectsChecksumDriftAndAdoptsLegacyJournalRows() async throws {
+    let store = MigrationStore()
+    let database = FakeDatabase(store: store)
+    let runner = SQLMigrationRunner()
+    let migration = SQLMigration(
+        id: "003-profile-index",
+        up: SQLQuery(unsafeSQL: "CREATE INDEX profiles_email_idx ON profiles (email)"),
+        down: SQLQuery(unsafeSQL: "DROP INDEX profiles_email_idx")
+    )
+
+    #expect(migration.checksum == migration.checksum)
+    try await runner.apply([migration], to: database)
+
+    let changedMigration = SQLMigration(
+        id: migration.id,
+        up: SQLQuery(unsafeSQL: "CREATE INDEX profiles_email_idx ON profiles (email, id)"),
+        down: migration.down
+    )
+    var checksumDriftRejected = false
+    do {
+        try await runner.apply([changedMigration], to: database)
+    } catch SQLQueryError.migrationChecksumMismatch(let id, _, _) {
+        checksumDriftRejected = id == migration.id
+    }
+    #expect(checksumDriftRejected)
+
+    let legacyStore = MigrationStore()
+    await legacyStore.seedLegacy(id: migration.id)
+    let legacyDatabase = FakeDatabase(store: legacyStore)
+    try await runner.apply([migration], to: legacyDatabase)
+    #expect(await legacyStore.recordedChecksum(id: migration.id) == migration.checksum)
+    #expect(await legacyStore.statements.filter { $0 == migration.up.statement }.isEmpty)
+}
+
+@Test func migrationRunnerRejectsInvalidAndDuplicateIDsBeforeDatabaseWork() async throws {
+    let store = MigrationStore()
+    let database = FakeDatabase(store: store)
+    let runner = SQLMigrationRunner()
+    let valid = SQLMigration(id: "001-valid", up: SQLQuery(unsafeSQL: "SELECT 1"))
+
+    var duplicateRejected = false
+    do {
+        try await runner.apply([valid, valid], to: database)
+    } catch SQLQueryError.duplicateMigration("001-valid") {
+        duplicateRejected = true
+    }
+    #expect(duplicateRejected)
+    #expect(await store.statements.isEmpty)
+
+    let invalid = SQLMigration(id: "Invalid ID", up: SQLQuery(unsafeSQL: "SELECT 1"))
+    var invalidIDRejected = false
+    do {
+        try await runner.apply([invalid], to: database)
+    } catch SQLQueryError.invalidMigrationID("Invalid ID") {
+        invalidIDRejected = true
+    }
+    #expect(invalidIDRejected)
+    #expect(await store.statements.isEmpty)
+}
+
 private actor MigrationStore {
-    private(set) var appliedIDs: Set<String> = []
+    private struct Record: Sendable {
+        var checksum: String?
+    }
+
+    private var records: [String: Record] = [:]
     private(set) var statements: [String] = []
+
+    var appliedIDs: Set<String> { Set(records.keys) }
 
     func execute(_ query: SQLQuery) {
         statements.append(query.statement)
         if query.statement.hasPrefix("INSERT INTO \"pearfy_schema_migrations\"") {
-            if case .text(let id)? = query.parameters.first { appliedIDs.insert(id) }
+            if case .text(let id)? = query.parameters.first,
+               case .text(let checksum)? = query.parameters.dropFirst().first {
+                records[id] = Record(checksum: checksum)
+            }
+        } else if query.statement.hasPrefix("UPDATE \"pearfy_schema_migrations\" SET checksum") {
+            if case .text(let id)? = query.parameters.first,
+               case .text(let checksum)? = query.parameters.dropFirst().first,
+               records[id] != nil {
+                records[id] = Record(checksum: checksum)
+            }
         } else if query.statement.hasPrefix("DELETE FROM \"pearfy_schema_migrations\"") {
-            if case .text(let id)? = query.parameters.first { appliedIDs.remove(id) }
+            if case .text(let id)? = query.parameters.first { records.removeValue(forKey: id) }
         }
     }
 
-    func queryStrings() -> [String] { appliedIDs.sorted() }
+    func queryStrings(_ query: SQLQuery) -> [String] {
+        guard case .text(let id)? = query.parameters.first,
+              let record = records[id] else { return [] }
+        return [record.checksum ?? "<legacy-null>"]
+    }
+
+    func seedLegacy(id: String) {
+        records[id] = Record(checksum: nil)
+    }
+
+    func recordedChecksum(id: String) -> String? { records[id]?.checksum }
 }
 
 private struct FakeDatabase: SQLDatabase {
@@ -76,10 +177,17 @@ private struct FakeDatabase: SQLDatabase {
     }
 
     func queryStrings(_ query: SQLQuery, column: String) async throws -> [String] {
-        await store.queryStrings()
+        await store.queryStrings(query)
     }
 
     func withTransaction<Value: Sendable>(
+        _ operation: @Sendable (any SQLTransaction) async throws -> Value
+    ) async throws -> Value {
+        try await operation(FakeTransaction(store: store))
+    }
+
+    func withMigrationLock<Value: Sendable>(
+        key: String,
         _ operation: @Sendable (any SQLTransaction) async throws -> Value
     ) async throws -> Value {
         try await operation(FakeTransaction(store: store))
@@ -94,6 +202,6 @@ private struct FakeTransaction: SQLTransaction {
     }
 
     func queryStrings(_ query: SQLQuery, column: String) async throws -> [String] {
-        await store.queryStrings()
+        await store.queryStrings(query)
     }
 }

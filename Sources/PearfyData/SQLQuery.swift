@@ -1,4 +1,5 @@
 import Foundation
+import Crypto
 
 public enum SQLValue: Sendable, Equatable {
     case null
@@ -16,6 +17,9 @@ public enum SQLQueryError: Error, Sendable, Equatable, CustomStringConvertible {
     case duplicateMigration(String)
     case missingRollback(String)
     case missingColumn(String)
+    case invalidMigrationID(String)
+    case migrationChecksumMismatch(id: String, expected: String, recorded: String)
+    case migrationNotApplied(String)
 
     public var description: String {
         switch self {
@@ -24,6 +28,10 @@ public enum SQLQueryError: Error, Sendable, Equatable, CustomStringConvertible {
         case .duplicateMigration(let id): "PEARFY_DATA_003: duplicate migration id '\(id)'"
         case .missingRollback(let id): "PEARFY_DATA_004: migration '\(id)' has no rollback query"
         case .missingColumn(let name): "PEARFY_DATA_005: result row does not contain column '\(name)'"
+        case .invalidMigrationID(let id): "PEARFY_DATA_006: invalid migration id '\(id)'"
+        case .migrationChecksumMismatch(let id, let expected, let recorded):
+            "PEARFY_DATA_007: migration '\(id)' checksum mismatch (expected \(expected), recorded \(recorded))"
+        case .migrationNotApplied(let id): "PEARFY_DATA_008: migration '\(id)' is not applied"
         }
     }
 }
@@ -166,6 +174,12 @@ public protocol SQLDatabase: Sendable {
     func withTransaction<Value: Sendable>(
         _ operation: @Sendable (any SQLTransaction) async throws -> Value
     ) async throws -> Value
+    /// Runs an operation in a database transaction while holding the same
+    /// durable, cross-process lock for every caller using `key`.
+    func withMigrationLock<Value: Sendable>(
+        key: String,
+        _ operation: @Sendable (any SQLTransaction) async throws -> Value
+    ) async throws -> Value
 }
 
 public struct SQLMigration: Sendable {
@@ -178,6 +192,11 @@ public struct SQLMigration: Sendable {
         self.up = up
         self.down = down
     }
+
+    /// Stable SHA-256 of the immutable migration ID and its up/down statements.
+    public var checksum: String {
+        SQLMigrationChecksum.compute(id: id, up: up, down: down)
+    }
 }
 
 public struct SQLMigrationRunner: Sendable {
@@ -188,23 +207,37 @@ public struct SQLMigrationRunner: Sendable {
     }
 
     public func apply(_ migrations: [SQLMigration], to database: any SQLDatabase) async throws {
+        let ordered = try Self.ordered(migrations)
+        try await ensureJournal(on: database)
+
         let journal = journalTable.description
-        try await database.execute(SQLQuery(unsafeSQL: "CREATE TABLE IF NOT EXISTS \(journal) (id TEXT PRIMARY KEY)"))
-        let applied = Set(try await database.queryStrings(
-            SQLQuery(unsafeSQL: "SELECT id FROM \(journal) ORDER BY id"),
-            column: "id"
-        ))
-        var seen: Set<String> = []
-        for migration in migrations.sorted(by: { $0.id < $1.id }) {
-            guard seen.insert(migration.id).inserted else {
-                throw SQLQueryError.duplicateMigration(migration.id)
-            }
-            guard !applied.contains(migration.id) else { continue }
-            try await database.withTransaction { transaction in
+        for migration in ordered {
+            try await database.withMigrationLock(key: lockKey(for: migration.id)) { transaction in
+                let recorded = try await Self.recordedChecksum(
+                    for: migration.id,
+                    in: journal,
+                    transaction: transaction
+                )
+                if let recorded {
+                    if recorded == Self.legacyChecksumMarker {
+                        try await transaction.execute(SQLQuery(
+                            unsafeSQL: "UPDATE \(journal) SET checksum = $2 WHERE id = $1 AND checksum IS NULL",
+                            parameters: [.text(migration.id), .text(migration.checksum)]
+                        ))
+                    } else if recorded != migration.checksum {
+                        throw SQLQueryError.migrationChecksumMismatch(
+                            id: migration.id,
+                            expected: migration.checksum,
+                            recorded: recorded
+                        )
+                    }
+                    return
+                }
+
                 try await transaction.execute(migration.up)
                 try await transaction.execute(SQLQuery(
-                    unsafeSQL: "INSERT INTO \(journal) (id) VALUES ($1)",
-                    parameters: [.text(migration.id)]
+                    unsafeSQL: "INSERT INTO \(journal) (id, checksum) VALUES ($1, $2)",
+                    parameters: [.text(migration.id), .text(migration.checksum)]
                 ))
             }
         }
@@ -212,13 +245,154 @@ public struct SQLMigrationRunner: Sendable {
 
     public func rollback(_ migration: SQLMigration, on database: any SQLDatabase) async throws {
         guard let down = migration.down else { throw SQLQueryError.missingRollback(migration.id) }
+        _ = try Self.ordered([migration])
+        try await ensureJournal(on: database)
+
         let journal = journalTable.description
-        try await database.withTransaction { transaction in
+        try await database.withMigrationLock(key: lockKey(for: migration.id)) { transaction in
+            guard let recorded = try await Self.recordedChecksum(
+                for: migration.id,
+                in: journal,
+                transaction: transaction
+            ) else {
+                throw SQLQueryError.migrationNotApplied(migration.id)
+            }
+            if recorded != Self.legacyChecksumMarker && recorded != migration.checksum {
+                throw SQLQueryError.migrationChecksumMismatch(
+                    id: migration.id,
+                    expected: migration.checksum,
+                    recorded: recorded
+                )
+            }
+            if recorded == Self.legacyChecksumMarker {
+                try await transaction.execute(SQLQuery(
+                    unsafeSQL: "UPDATE \(journal) SET checksum = $2 WHERE id = $1 AND checksum IS NULL",
+                    parameters: [.text(migration.id), .text(migration.checksum)]
+                ))
+            }
             try await transaction.execute(down)
             try await transaction.execute(SQLQuery(
                 unsafeSQL: "DELETE FROM \(journal) WHERE id = $1",
                 parameters: [.text(migration.id)]
             ))
         }
+    }
+
+    private static let legacyChecksumMarker = "<legacy-null>"
+
+    private func ensureJournal(on database: any SQLDatabase) async throws {
+        let journal = journalTable.description
+        try await database.withMigrationLock(key: "\(journalTable.rawValue):bootstrap") { transaction in
+            try await transaction.execute(SQLQuery(unsafeSQL: """
+            CREATE TABLE IF NOT EXISTS \(journal) (
+                id TEXT PRIMARY KEY,
+                checksum TEXT,
+                applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """))
+            try await transaction.execute(SQLQuery(
+                unsafeSQL: "ALTER TABLE \(journal) ADD COLUMN IF NOT EXISTS checksum TEXT"
+            ))
+            try await transaction.execute(SQLQuery(
+                unsafeSQL: "ALTER TABLE \(journal) ADD COLUMN IF NOT EXISTS applied_at TIMESTAMPTZ"
+            ))
+            try await transaction.execute(SQLQuery(
+                unsafeSQL: "UPDATE \(journal) SET applied_at = CURRENT_TIMESTAMP WHERE applied_at IS NULL"
+            ))
+            try await transaction.execute(SQLQuery(
+                unsafeSQL: "ALTER TABLE \(journal) ALTER COLUMN applied_at SET DEFAULT CURRENT_TIMESTAMP"
+            ))
+            try await transaction.execute(SQLQuery(
+                unsafeSQL: "ALTER TABLE \(journal) ALTER COLUMN applied_at SET NOT NULL"
+            ))
+        }
+    }
+
+    private func lockKey(for migrationID: String) -> String {
+        "\(journalTable.rawValue):\(migrationID)"
+    }
+
+    private static func recordedChecksum(
+        for migrationID: String,
+        in journal: String,
+        transaction: any SQLTransaction
+    ) async throws -> String? {
+        let values = try await transaction.queryStrings(SQLQuery(
+            unsafeSQL: "SELECT COALESCE(checksum, '\(legacyChecksumMarker)')::TEXT AS checksum FROM \(journal) WHERE id = $1",
+            parameters: [.text(migrationID)]
+        ), column: "checksum")
+        return values.first
+    }
+
+    private static func ordered(_ migrations: [SQLMigration]) throws -> [SQLMigration] {
+        var seen: Set<String> = []
+        for migration in migrations {
+            let bytes = Array(migration.id.utf8)
+            guard !bytes.isEmpty,
+                  bytes.count <= 128,
+                  (48...57).contains(bytes[0]) || (97...122).contains(bytes[0]),
+                  bytes.allSatisfy({
+                      (48...57).contains($0) || (97...122).contains($0) || $0 == 45 || $0 == 46 || $0 == 95
+                  }) else {
+                throw SQLQueryError.invalidMigrationID(migration.id)
+            }
+            guard seen.insert(migration.id).inserted else {
+                throw SQLQueryError.duplicateMigration(migration.id)
+            }
+        }
+        return migrations.sorted(by: { $0.id < $1.id })
+    }
+}
+
+private enum SQLMigrationChecksum {
+    static func compute(id: String, up: SQLQuery, down: SQLQuery?) -> String {
+        var data = Data()
+        append("pearfy-sql-migration-checksum-v1", to: &data)
+        append(id, to: &data)
+        append(query: up, to: &data)
+        if let down {
+            append("down", to: &data)
+            append(query: down, to: &data)
+        } else {
+            append("no-down", to: &data)
+        }
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func append(query: SQLQuery, to data: inout Data) {
+        append("statement", to: &data)
+        append(query.statement, to: &data)
+        append(String(query.parameters.count), to: &data)
+        for parameter in query.parameters {
+            switch parameter {
+            case .null:
+                append("null", to: &data)
+            case .text(let value):
+                append("text", to: &data)
+                append(value, to: &data)
+            case .integer(let value):
+                append("integer", to: &data)
+                append(String(value), to: &data)
+            case .decimal(let value):
+                append("decimal", to: &data)
+                append(String(value.bitPattern, radix: 16), to: &data)
+            case .boolean(let value):
+                append("boolean", to: &data)
+                append(value ? "true" : "false", to: &data)
+            case .uuid(let value):
+                append("uuid", to: &data)
+                append(value.uuidString.lowercased(), to: &data)
+            case .bytes(let value):
+                append("bytes", to: &data)
+                append(value.base64EncodedString(), to: &data)
+            }
+        }
+    }
+
+    private static func append(_ value: String, to data: inout Data) {
+        let bytes = Data(value.utf8)
+        var length = UInt64(bytes.count).bigEndian
+        withUnsafeBytes(of: &length) { data.append(contentsOf: $0) }
+        data.append(bytes)
     }
 }

@@ -2,17 +2,19 @@
 
 **Atualizado em:** 25 de setembro de 2026
 
-**Escopo:** funcionalidades presentes neste checkout e verificações executadas localmente. Este documento descreve o adendo de performance; não declara concluído o roadmap original do Pearfy.
+**Escopo:** funcionalidades presentes neste checkout e verificações executadas localmente. Inclui slices dos roadmaps 2/3 e v1.5; não declara esses roadmaps concluídos.
 
 ## O que está implementado
 
 - **DI e ciclo de vida:** registry e validação antecipada de dependências, singletons e factories assíncronas concorrentes, bindings por tipo/qualifier, escopos de request e inicialização/encerramento ordenados.
-- **Macros e discovery AOT:** macros para componentes e controllers, plugin gerador de registry por target e scaffold `HelloPearfy`.
-- **Web e HTTP:** router, parâmetros de rota/query/header/body, middleware, OpenAPI 3.1 inicial, limites de body/headers, controle de admissão e deadline; listener HTTP/1.1 baseado em SwiftNIO e shutdown gracioso.
+- **Macros, discovery e schema:** macros para componentes/controllers, `@Entity/@ID/@Column`, Route Groups, registry de componentes/schemas por target, UUIDv7 e scaffold `HelloPearfy`.
+- **Web, HTTP e Connect:** router com grupos/prefixos, snapshot de contrato routes-only, OpenAPI 3.1 filtrado por grupo, limites, admission/deadline; listener HTTP/1.1 SwiftNIO e shutdown gracioso.
 - **Validação e segurança:** validação declarativa e por macros, API key, JWT HMAC, autenticação Bearer e autorização por roles.
-- **Dados e adapters:** SQL parametrizado, migrations e adapter PostgreSQL com transações; cache local e Redis; broker local e Redis com limites, acknowledgements, retry, dead letters e recuperação após restart.
+- **Dados e adapters:** SQL parametrizado, adapter PostgreSQL transacional, SchemaIR/fingerprint, plano PostgreSQL inicial e migrations com checksum SHA-256, detecção de drift e lock transacional; `PearfyTransactions` fornece unit-of-work genérica REQUIRED, rollback-only e classification de commit unknown.
+- **Cache e messaging:** cache local/Redis e broker local/Redis com ack, retry, DLQ e recuperação.
+- **Social v1.5 (slice inicial):** `PearfySocial` define atores, handles validados, visibilidade e contrato do grafo; `PearfySocialPostgres` persiste atores, follows e blocks, aplicando ownership e regras básicas de leitura.
 - **Concorrência e integrações:** scheduler local fixed-delay; cliente HTTP outbound com limites de concorrência/fila, cancelamento, retries idempotentes e circuit breaker; cliente de chat compatível com API OpenAI.
-- **Operação:** health/readiness, métricas Prometheus com limites de cardinalidade, CLI `pearfy`, scaffold de aplicações e executável `pearfy-bench` para benchmarks e profiling.
+- **Operação e extensibilidade:** health/readiness, métricas Prometheus, CLI `pearfy` com Module Manager para produtos disponíveis, scaffold e `pearfy-bench` para profiling/benchmarks.
 
 Os módulos correspondentes estão declarados em `Package.swift`. Detalhes de arquitetura e limitações por área ficam em `docs/01-PLANO-DE-INTEGRACAO.md` e nos documentos `docs/02-*.md` a `docs/11-*.md`.
 
@@ -22,8 +24,9 @@ Executados no checkout em macOS arm64, com Apple Swift 6.4:
 
 | Comando | Resultado |
 |---|---|
-| `bash scripts/test-unit.sh` | 73 testes passaram em Debug. Neste comando os hosts de PostgreSQL e Redis não estavam configurados, então as rotinas de integração externa retornaram sem conectar aos serviços. |
-| `bash scripts/test-integrations.sh -c release` | 73 testes passaram em Release; integrações reais com PostgreSQL e Redis locais passaram, incluindo transações/cancelamento, cache, broker, limites, retry, dead letters e recuperação. |
+| `bash scripts/test-unit.sh` | 97 testes passaram em Debug; integrações externas sem ambiente configurado retornam sem conectar aos serviços. |
+| `bash scripts/test-integrations.sh` | 97 testes passaram em Debug, incluindo integrações reais com PostgreSQL e Redis locais, Social graph, Transaction Manager e migration locking/drift. |
+| `bash scripts/test-integrations.sh -c release` | Os mesmos 97 testes passaram em Release com integrações reais locais, incluindo SchemaCompiler DDL, transações/cancelamento, Transaction Manager, migration locking/drift, cache, broker e Social graph. |
 | `swift build -c release` | Build de produção passou. |
 | `bash scripts/verify-aot-snapshot.sh` | O registry AOT gerado corresponde ao snapshot versionado. |
 
@@ -56,4 +59,4 @@ Scripts de benchmark e instruções de reprodução: `Benchmarks/README.md` e `s
 - Tracing distribuído, logging estruturado, profiling contínuo e métricas detalhadas de waiters dos pools ainda estão pendentes.
 - O soak registrado dura 60 segundos; validações prolongadas de retenção/memória, retry-storm e failover multi-host não foram concluídas.
 - O workflow de CI para macOS/Linux está configurado em `.github/workflows/performance.yml`, mas seus runners remotos ainda não foram validados. Os resultados de teste deste documento são locais em macOS.
-- O roadmap original (`docs/01-ROADMAP.md` e `docs/06-BACKLOG.md`) não está neste checkout; portanto, o estado global daquele roadmap não pode ser confirmado aqui.
+- Os roadmaps 2/3/v1.5 foram arquivados em `roadmap/`; as matrizes registram cobertura e lacunas de capacidades reutilizáveis do framework. A cópia `roadmap/estado-atual/` é um snapshot anterior aos roadmaps 2/3.

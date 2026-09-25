@@ -48,8 +48,15 @@ public struct ProjectScaffolder: Sendable {
                 at: temporary.appendingPathComponent("Sources/\(moduleName)", isDirectory: true),
                 withIntermediateDirectories: true
             )
+            try FileManager.default.createDirectory(
+                at: temporary.appendingPathComponent(".pearfy", isDirectory: true),
+                withIntermediateDirectories: true
+            )
             try Self.packageManifest(name: name, moduleName: moduleName, pearfyPath: pearfyPath)
                 .write(to: temporary.appendingPathComponent("Package.swift"), atomically: true, encoding: .utf8)
+            try PearfyModuleManager()
+                .initialLockfileData()
+                .write(to: temporary.appendingPathComponent(".pearfy/modules.json"), options: .atomic)
             try Self.applicationSource(moduleName: moduleName)
                 .write(to: temporary.appendingPathComponent("Sources/\(moduleName)/main.swift"), atomically: true, encoding: .utf8)
             try Self.readme(name: name, moduleName: moduleName)
@@ -101,12 +108,14 @@ public struct ProjectScaffolder: Sendable {
                 .executableTarget(
                     name: "\(moduleName)",
                     dependencies: [
+                        // pearfy-modules:begin
                         .product(name: "PearfyConfiguration", package: "Pearfy"),
                         .product(name: "PearfyContext", package: "Pearfy"),
                         .product(name: "PearfyMacros", package: "Pearfy"),
-                        .product(name: "PearfyWeb", package: "Pearfy"),
+                        .product(name: "PearfyNIO", package: "Pearfy"),
                         .product(name: "PearfyValidation", package: "Pearfy"),
-                        .product(name: "PearfyNIO", package: "Pearfy")
+                        .product(name: "PearfyWeb", package: "Pearfy"),
+                        // pearfy-modules:end
                     ],
                     plugins: [.plugin(name: "PearfyDiscoveryPlugin", package: "Pearfy")]
                 )
@@ -169,6 +178,8 @@ public struct ProjectScaffolder: Sendable {
         curl http://127.0.0.1:8080/hello/pear
         # stop gracefully with Ctrl+C or SIGTERM
         ```
+
+        Optional Pearfy products can be planned/installed with `pearfy modules list`, `pearfy modules plan --add postgres`, and `pearfy add postgres`. Run `pearfy modules doctor` to verify the generated dependency lock and manifest.
 
         This scaffold links to the local Pearfy checkout using its current absolute path. If the checkout moves, update the Pearfy path in `Package.swift`. Set `PEARFY_HTTP_PORT` to choose another listening port.
         """

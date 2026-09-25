@@ -17,6 +17,8 @@ public struct RestControllerMacro: MemberMacro {
         }
 
         let prefix = firstStringArgument(in: node) ?? ""
+        let routeGroupType = routeGroupType(in: node, context: context)
+        let routeGroupName = routeGroupType.map { _ in "__pearfy_routeGroup.name" }
         let controllerAttributes: [AttributeSyntax]
         if let value = declaration.as(StructDeclSyntax.self) {
             controllerAttributes = attributes(on: value)
@@ -48,16 +50,53 @@ public struct RestControllerMacro: MemberMacro {
                 controllerPermitAll: controllerPermitAll,
                 controllerRoles: controllerRoles,
                 controllerAccess: controllerAccess,
+                routeGroupName: routeGroupName,
                 context: context
             ) else { continue }
             routeRegistrations.append(generated)
         }
 
+        let routeGroupRegistration: String
+        if let routeGroupType {
+            routeGroupRegistration = """
+            let __pearfy_routeGroup = \(routeGroupType).__pearfy_routeGroup
+            try await router.registerGroup(__pearfy_routeGroup)
+            """
+        } else {
+            routeGroupRegistration = ""
+        }
+
         return [DeclSyntax(stringLiteral: """
         static func __pearfy_registerRoutes(in router: PearfyWeb.HTTPRouter, instance: Self) async throws {
+        \(routeGroupRegistration)
         \(routeRegistrations.joined(separator: "\n"))
         }
         """)]
+    }
+
+    private static func routeGroupType(
+        in attribute: AttributeSyntax,
+        context: some MacroExpansionContext
+    ) -> String? {
+        guard case .argumentList(let arguments) = attribute.arguments,
+              let argument = arguments.first(where: { $0.label?.text == "group" }) else { return nil }
+        let expression = argument.expression.trimmedDescription
+        guard expression.hasSuffix(".self") else {
+            context.diagnose(Diagnostic(
+                node: Syntax(argument),
+                message: ControllerMacroMessage("@RestController group must reference a @RouteGroup type with .self")
+            ))
+            return nil
+        }
+        let typeName = String(expression.dropLast(".self".count))
+        guard !typeName.isEmpty else {
+            context.diagnose(Diagnostic(
+                node: Syntax(argument),
+                message: ControllerMacroMessage("@RestController group type cannot be empty")
+            ))
+            return nil
+        }
+        return typeName
     }
 
     private static func routeDefinition(for function: FunctionDeclSyntax) -> (method: String, path: String)? {
@@ -85,6 +124,7 @@ public struct RestControllerMacro: MemberMacro {
         controllerPermitAll: Bool,
         controllerRoles: [String],
         controllerAccess: String,
+        routeGroupName: String?,
         context: some MacroExpansionContext
     ) -> String? {
         let functionName = function.name.text
@@ -183,8 +223,9 @@ public struct RestControllerMacro: MemberMacro {
         }
 
         let allBindings = localBindings.map { "            \($0)" }.joined(separator: "\n")
+        let groupArgument = routeGroupName.map { ", group: \($0)" } ?? ""
         return """
-        try await router.on(.\(method), path: \(swiftString(path)), access: \(routeAccess)) { request in
+        try await router.on(.\(method), path: \(swiftString(path)), access: \(routeAccess)\(groupArgument)) { request in
         \(allBindings)
             \(response.replacingOccurrences(of: "\n", with: "\n            "))
         }
