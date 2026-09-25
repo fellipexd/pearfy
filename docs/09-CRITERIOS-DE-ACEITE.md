@@ -16,7 +16,7 @@
 - [x] Body/header bounds, timeout e deadline têm testes.
 - [x] Handlers HTTP rodam fora de trabalho bloqueante no event loop.
 - [x] Router/middleware e admission limit passam testes concorrentes.
-- [ ] HTTP errors, disconnect e shutdown sob carga passam testes extensos; testes cobrem cancelamento/disconnect, deadline, liberação do admission slot, shutdown com oito handlers concorrentes e recuperação do listener, além de smoke de SIGTERM. Stress comparativo de 480 mil requisições passou sem erros; falta exercitar shutdown durante carga contínua e soak prolongado.
+- [x] HTTP errors, disconnect e shutdown sob carga passam testes extensos; testes cobrem cancelamento/disconnect, deadline, liberação do admission slot, shutdown com oito handlers concorrentes e durante 400 requisições simultâneas (32 handlers ativos), recuperação do listener e smoke de SIGTERM. Stress comparativo de 480 mil requisições passou sem erros. Soak prolongado é acompanhado no gate de memória.
 - [x] p95/p99, RPS, RSS e erros foram medidos em concorrências 1/10/100; rerun source-current de cinco amostras em `Benchmarks/Baselines/HTTP-2026-09-25-macos-arm64-rerun.*`.
 
 ## Gate P1 — Data / integração

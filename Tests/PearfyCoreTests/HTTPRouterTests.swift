@@ -329,6 +329,58 @@ import FoundationNetworking
     #expect(await router.currentInFlightRequests() == 0)
 }
 
+@Test func nioShutdownDrainsConcurrentRequestLoad() async throws {
+    let concurrency = 32
+    let router = HTTPRouter(maximumInFlightRequests: concurrency, requestDeadline: .seconds(2))
+    try await router.get("/load") { _ in
+        try await Task.sleep(for: .milliseconds(80))
+        return .text("ok")
+    }
+    let server = PearfyHTTPServer(router: router, port: 0)
+    try await server.start()
+    guard let port = await server.boundPort(), let url = URL(string: "http://127.0.0.1:\(port)/load") else {
+        try await server.stop()
+        Issue.record("NIO did not expose an ephemeral bound port")
+        return
+    }
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.httpMaximumConnectionsPerHost = concurrency
+    let session = URLSession(configuration: configuration)
+    let clients = Task {
+        await withTaskGroup(of: Bool.self, returning: Int.self) { group in
+            for _ in 0..<400 {
+                group.addTask {
+                    do {
+                        let (data, response) = try await session.data(from: url)
+                        return (response as? HTTPURLResponse)?.statusCode == 200 && data == Data("ok".utf8)
+                    } catch {
+                        return false
+                    }
+                }
+            }
+            var successfulResponses = 0
+            for await succeeded in group where succeeded { successfulResponses += 1 }
+            return successfulResponses
+        }
+    }
+
+    for _ in 0..<200 {
+        if await router.currentInFlightRequests() == concurrency { break }
+        try await Task.sleep(for: .milliseconds(2))
+    }
+    #expect(await router.currentInFlightRequests() == concurrency)
+    try await Task.sleep(for: .milliseconds(100))
+    #expect(await router.currentInFlightRequests() > 0)
+
+    try await server.stop()
+    let successfulResponses = await clients.value
+    session.invalidateAndCancel()
+    #expect(successfulResponses >= concurrency)
+    #expect(await router.currentInFlightRequests() == 0)
+    #expect(await server.boundPort() == nil)
+}
+
 @RestController("/api")
 @PermitAll
 private struct MacroGreetingController: Sendable {

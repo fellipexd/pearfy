@@ -40,7 +40,7 @@ Este checkout implementa DI/request scopes, contexto e lifecycle; HTTP/NIO, vali
 
 Os CSVs em `Benchmarks/Baselines/` são medições locais, não SLAs; os baselines atuais estão associados ao commit local `ce5bef0`. O snapshot AOT também tem verificação reproduzível com `bash scripts/verify-aot-snapshot.sh`. O arquivo-fonte do roadmap principal citado pelos documentos (`docs/01-ROADMAP.md`, além de `docs/06-BACKLOG.md`) não está presente neste checkout; o adendo de performance está disponível, mas o aceite global do roadmap original não pode ser conferido sem esses documentos. `benchmark-observability.sh` compara métricas HTTP ligadas/desligadas; `benchmark-modules.sh` mede adapters locais em memória/stub.
 
-A suíte tem 72 testes; as quatro verificações com serviços externos rodam quando configuradas. A suíte foi executada em macOS com PostgreSQL e Redis locais habilitados, e passou em Debug e Release:
+A suíte tem 73 testes; as quatro verificações com serviços externos rodam quando configuradas. A suíte foi executada em macOS com PostgreSQL e Redis locais habilitados, e passou em Debug e Release:
 
 ```bash
 bash scripts/test-unit.sh
