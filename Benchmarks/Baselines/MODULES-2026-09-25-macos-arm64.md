@@ -4,7 +4,7 @@
 - OS: macOS 27.0 (Build 26A5425a).
 - Toolchain: Apple Swift 6.4.0.34.1.
 - Build: SwiftPM release.
-- Source revision: `unversioned-worktree` (the checkout has no Git repository).
+- Source revision: `ce5bef0` (initial local baseline commit).
 - Capture: 5 runs, 1,000 operations per loop, except scheduler lifecycle (one start/stop per run).
 - Workloads are in-process: cache operations and message ack use bounded local adapters; outbound HTTP uses a stub transport and no network; metrics increments use the local registry.
 - Peak RSS is process-wide high-water RSS, cumulative across scenarios.

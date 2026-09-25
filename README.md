@@ -38,18 +38,18 @@ Adicionar um eixo de **performance by design** à execução do roadmap existent
 
 Este checkout implementa DI/request scopes, contexto e lifecycle; HTTP/NIO, validação e políticas JWT/API-key; SQL parametrizado e adapter PostgreSQL; cache local e Redis; broker em memória e Redis; scheduler local de fixed-delay; client HTTP outbound com concorrência/fila limitadas, retry/circuit breaker; adapter de chat OpenAI-compatible; e health/readiness/métricas Prometheus. O escopo e as limitações atuais de cada módulo estão em `backlog/PERFORMANCE-BACKLOG.md` e nos documentos por área. `pearfy new` gera um app HTTP executável; `pearfy-bench` mede DI, HTTP, observability e adapters locais.
 
-Os CSVs em `Benchmarks/Baselines/` são medições locais, não SLAs. Este workspace não possui `.git`, então `PPERF-QA-001` continua aberto até os dados serem associados a um commit. O arquivo-fonte do roadmap principal citado pelos documentos (`docs/01-ROADMAP.md`, além de `docs/06-BACKLOG.md`) não está presente neste checkout; o adendo de performance está disponível, mas o aceite global do roadmap original não pode ser conferido sem esses documentos. `benchmark-observability.sh` compara métricas HTTP ligadas/desligadas; `benchmark-modules.sh` mede adapters locais em memória/stub.
+Os CSVs em `Benchmarks/Baselines/` são medições locais, não SLAs; os baselines atuais estão associados ao commit local `ce5bef0`. O snapshot AOT também tem verificação reproduzível com `bash scripts/verify-aot-snapshot.sh`. O arquivo-fonte do roadmap principal citado pelos documentos (`docs/01-ROADMAP.md`, além de `docs/06-BACKLOG.md`) não está presente neste checkout; o adendo de performance está disponível, mas o aceite global do roadmap original não pode ser conferido sem esses documentos. `benchmark-observability.sh` compara métricas HTTP ligadas/desligadas; `benchmark-modules.sh` mede adapters locais em memória/stub.
 
 A suíte tem 72 testes; as quatro verificações com serviços externos rodam quando configuradas. A suíte foi executada em macOS com PostgreSQL e Redis locais habilitados, e passou em Debug e Release:
 
 ```bash
-swift test -Xswiftc -load-plugin-library -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib
-swift test -c release -Xswiftc -load-plugin-library -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib
+bash scripts/test-unit.sh
+bash scripts/test-unit.sh -c release
 ```
 
 Para rodar incluindo as integrações locais, inicie PostgreSQL/Redis e use `bash scripts/test-integrations.sh` (aceita `PEARFY_TEST_POSTGRES_*` e `PEARFY_TEST_REDIS_*`).
 
-Gates externos ainda pendentes: Git para associar/versionar baselines, host profiler (`xctrace` indisponível neste host), Linux CI, soak e validação do broker em múltiplos processos/hosts. PostgreSQL/Redis têm adapters e testes de integração locais. O roadmap principal não está neste checkout; a cobertura aqui é do adendo de performance.
+O workflow `.github/workflows/performance.yml` configura release build/testes em macOS/Linux, integrações PostgreSQL/Redis no Linux e relatório HTTP manual/semanal não bloqueante; aguarda uma execução remota para validar os runners. Gates ainda pendentes: `xctrace`/Instruments, soak de longa duração e validação de failover do broker multi-host. CPU e memória têm fallback local via `sample` e RSS (`ps`). O roadmap principal não está neste checkout; a cobertura aqui é do adendo de performance.
 
 ## CLI disponível
 
@@ -63,9 +63,10 @@ bash scripts/benchmark-observability.sh --runs 5 --http-requests 500
 bash scripts/benchmark-modules.sh --runs 5 --resolves 1000 --concurrency 10
 swift run pearfy profile cpu -- ./MinhaApi
 swift run pearfy doctor performance
+bash scripts/verify-aot-snapshot.sh
 ```
 
-O scaffold usa um caminho local absoluto para este checkout do Pearfy; `--framework-path` ou `PEARFY_FRAMEWORK_PATH` escolhem outro checkout. Profiling depende das ferramentas host (`xcrun xctrace`, `perf`, `heaptrack` ou `valgrind`). Veja `swift run pearfy --help`.
+O scaffold usa um caminho local absoluto para este checkout do Pearfy; `--framework-path` ou `PEARFY_FRAMEWORK_PATH` escolhem outro checkout. Profiling usa `xcrun xctrace` quando disponível; neste host, CPU usa `/usr/bin/sample` e memória usa amostragem RSS via `ps`. Linux pode usar `perf`, `heaptrack` ou `valgrind`. Veja `swift run pearfy --help`.
 
 ## Regra de nomenclatura
 

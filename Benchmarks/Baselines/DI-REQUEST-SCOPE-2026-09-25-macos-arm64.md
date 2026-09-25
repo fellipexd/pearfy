@@ -4,7 +4,7 @@
 - OS: macOS 27.0 (Build 26A5425a).
 - Toolchain: Apple Swift 6.4.0.34.1.
 - Build: SwiftPM release.
-- Source revision: `unversioned-worktree` (the checkout has no Git repository).
+- Source revision: `ce5bef0` (initial local baseline commit).
 - Capture: 5 timed samples per scenario; raw rows are adjacent.
 - Peak RSS is the process high-water mark and cumulative across scenarios; it is not RSS attributed to one operation.
 

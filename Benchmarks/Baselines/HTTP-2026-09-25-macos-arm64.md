@@ -4,7 +4,7 @@
 - OS/toolchain: macOS 27.0 (26A5425a), Apple Swift 6.4.0.34.1.
 - Build: SwiftPM `release`; five 500-request samples per route/concurrency point.
 - Comparators use identical plaintext (`pear`) and JSON (`{"message":"pear"}`) payloads on loopback, with keep-alive and no external database.
-- Source revision: unversioned working tree; attach a commit before treating these values as a CI baseline.
+- Source revision: `ce5bef0` (initial local baseline commit).
 - All recorded samples returned 200 with zero body/status mismatches. RPS, p95/p99, and RSS are local exploratory measurements, not a product promise.
 
 ## Medianas

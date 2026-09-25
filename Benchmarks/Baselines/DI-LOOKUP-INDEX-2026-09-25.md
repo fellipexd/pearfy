@@ -1,6 +1,7 @@
 # DI lookup index experiment — 2026-09-25
 
 - Host/toolchain/build: same MacBook Air M4, macOS 27.0, Swift 6.4 release configuration as `DI-2026-09-25-macos-arm64.md`.
+- Source revision: `ce5bef0` (initial local baseline commit).
 - Five samples per point. The operation count is scaled to keep the original linear-scan baseline bounded: `min(--resolves, max(100, 100000 / registration-count))`.
 - CSV files next to this report contain the raw samples and medians before/after the type index.
 - `peak_rss_bytes` remains process-wide high-water RSS, not scenario-attributed memory.

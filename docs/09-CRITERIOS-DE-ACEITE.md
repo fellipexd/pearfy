@@ -8,7 +8,7 @@
 - [x] Ciclos e bindings ausentes/ambíguos falham com mensagem útil; request scope é isolado por escopo e não pode ser capturado por singleton.
 - [x] Contextos isolados não compartilham singleton.
 - [x] Resolução não usa macro scanning/reflection por request.
-- [ ] Medidas repetíveis de bootstrap, resolve e RSS estão associadas a um commit reproduzível em `Benchmarks/Baselines/` (CSV local existe, falta versionamento Git).
+- [x] Medidas repetíveis de bootstrap, resolve e RSS estão associadas ao commit local `ce5bef0` em `Benchmarks/Baselines/`.
 
 ## Gate P0 — Web / NIO (quando fase HTTP chegar)
 
@@ -16,7 +16,7 @@
 - [x] Body/header bounds, timeout e deadline têm testes.
 - [x] Handlers HTTP rodam fora de trabalho bloqueante no event loop.
 - [x] Router/middleware e admission limit passam testes concorrentes.
-- [ ] HTTP errors, disconnect e shutdown sob carga passam testes extensos; testes agora cobrem cancelamento/disconnect, deadline, liberação do admission slot, shutdown com oito handlers concorrentes e recuperação do listener, além de smoke de SIGTERM. Falta stress de shutdown/soak em carga alta.
+- [ ] HTTP errors, disconnect e shutdown sob carga passam testes extensos; testes cobrem cancelamento/disconnect, deadline, liberação do admission slot, shutdown com oito handlers concorrentes e recuperação do listener, além de smoke de SIGTERM. Stress comparativo de 480 mil requisições passou sem erros; falta exercitar shutdown durante carga contínua e soak prolongado.
 - [x] p95/p99, RPS, RSS e erros foram medidos em concorrências 1/10/100; rerun source-current de cinco amostras em `Benchmarks/Baselines/HTTP-2026-09-25-macos-arm64-rerun.*`.
 
 ## Gate P1 — Data / integração
@@ -28,7 +28,7 @@
 
 ## Gate 1.0 transversal
 
-- [ ] CI Linux/macOS release build + testes.
+- [ ] CI Linux/macOS release build + testes. Workflow está configurado em `.github/workflows/performance.yml`; falta execução remota nos dois runners.
 - [ ] Soak e saturation não deixam crescimento inexplicado de memória.
 - [ ] Benchmarks com metodologia e dados brutos publicáveis.
 - [ ] Performance não enfraqueceu auth, validação, limites ou isolation.

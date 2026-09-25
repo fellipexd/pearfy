@@ -27,3 +27,22 @@ bash scripts/benchmark-http.sh --runs 5 --http-requests 500 > http-baseline.csv 
 ```
 
 Repita pelo menos cinco vezes em host e configuração controlados. Preserve CSV e metadata juntos; não compare execuções de máquinas/toolchains diferentes como se fossem equivalentes. A ferramenta não altera o runtime e não afirma que medições locais constituem SLA.
+
+## High-load run e profiling
+
+O registro `Baselines/HTTP-STRESS-2026-09-25-macos-arm64.*` compara 480.000 requests no total (20.000 por amostra, duas rodadas e concorrência 1/10/100). É um teste local de carga, não um soak prolongado. Reproduza com:
+
+```bash
+bash scripts/benchmark-http.sh --runs 2 --http-requests 20000
+```
+
+No macOS sem Xcode, capture uma amostra de CPU do benchmark e do servidor/router durante o tráfego:
+
+```bash
+PEARFY_PROFILE_DURATION_SECONDS=30 swift run -c release pearfy profile cpu -- \
+  .build/release/pearfy-bench --http-only --runs 1 --http-requests 10000
+```
+
+O resultado de `/usr/bin/sample` é escrito no diretório de saída configurado por `PEARFY_PROFILE_OUTPUT_DIR` (ou no diretório atual). A captura sob carga deste host mostrou frames do router, middleware, path matching e `JSONEncoder`; use-a para investigação, não como medição de throughput.
+
+Com `/usr/bin/heap` disponível, um snapshot de classes/allocation sites pode ser obtido durante o benchmark habilitando `MallocStackLogging=lite`; um exemplo e as ressalvas de atribuição estão em `Baselines/HTTP-ALLOCATIONS-2026-09-25-macos-arm64.md`. O comando `pearfy profile memory` continua reportando RSS via `ps` neste host.

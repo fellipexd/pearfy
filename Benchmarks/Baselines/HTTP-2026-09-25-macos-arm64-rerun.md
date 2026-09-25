@@ -4,7 +4,7 @@
 - OS: macOS 27.0 (Build 26A5425a).
 - Toolchain: Apple Swift 6.4.0.34.1.
 - Build: SwiftPM release.
-- Source revision: `unversioned-worktree` (the checkout has no Git repository).
+- Source revision: `ce5bef0` (initial local baseline commit).
 - Workload: 500 requests per sample; 5 samples; plaintext and JSON; concurrency 1/10/100; URLSession client.
 - All 60 samples reported zero errors. Peak RSS is the high-water mark of the benchmark process, including both server runs.
 - Raw data: `HTTP-2026-09-25-macos-arm64-rerun.csv`.
