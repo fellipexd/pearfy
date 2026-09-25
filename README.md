@@ -10,6 +10,7 @@ Adicionar um eixo de **performance by design** à execução do roadmap existent
 
 ## Ordem de leitura
 
+0. `docs/IMPLEMENTADO-E-TESTADO.md` — estado atual do checkout, cobertura verificada e limites conhecidos.
 1. `docs/01-PLANO-DE-INTEGRACAO.md` — como anexar ao projeto em andamento sem recomeçar.
 2. `docs/02-ARQUITETURA-DE-PERFORMANCE.md` — fronteiras de responsabilidade e decisões.
 3. `docs/03-DI-E-BOOTSTRAP-AOT.md` — resolução de componentes e geração antecipada.
