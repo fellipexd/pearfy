@@ -24,9 +24,9 @@ Executados no checkout em macOS arm64, com Apple Swift 6.4:
 
 | Comando | Resultado |
 |---|---|
-| `bash scripts/test-unit.sh` | 98 testes passaram em Debug; sem os hosts de serviços configurados, os testes de integração externa retornam sem conectar. |
-| `bash scripts/test-integrations.sh` | 98 testes passaram em Debug com PostgreSQL e Redis locais reais, incluindo Social, Transaction Manager e migration plan/locking/drift. |
-| `bash scripts/test-integrations.sh -c release` | Os mesmos 98 testes passaram em Release com integrações reais, incluindo Social, Transaction Manager e migration plan/locking/drift. |
+| `bash scripts/test-unit.sh` | 99 testes passaram em Debug; sem os hosts de serviços configurados, os testes de integração externa retornam sem conectar. |
+| `bash scripts/test-integrations.sh` | 99 testes passaram em Debug com PostgreSQL e Redis locais reais, incluindo Social, Transaction Manager e migration artifacts/plan/locking/drift. |
+| `bash scripts/test-integrations.sh -c release` | Os mesmos 99 testes passaram em Release com integrações reais, incluindo Social, Transaction Manager e migration artifacts/plan/locking/drift. |
 | `bash scripts/verify-aot-snapshot.sh` | Registry AOT gerado corresponde ao snapshot versionado. |
 | Build dos exemplos `GreeterFeature` e `DiscoveryApp` | Ambos compilaram após as macros de entidade/discovery. |
 

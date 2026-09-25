@@ -1,7 +1,7 @@
 import Foundation
 import Crypto
 
-public enum SQLValue: Sendable, Equatable {
+public enum SQLValue: Sendable, Equatable, Codable {
     case null
     case text(String)
     case integer(Int64)
@@ -9,6 +9,60 @@ public enum SQLValue: Sendable, Equatable {
     case boolean(Bool)
     case uuid(UUID)
     case bytes(Data)
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case value
+    }
+
+    private enum Kind: String, Codable {
+        case null
+        case text
+        case integer
+        case decimal
+        case boolean
+        case uuid
+        case bytes
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        switch try container.decode(Kind.self, forKey: .kind) {
+        case .null: self = .null
+        case .text: self = .text(try container.decode(String.self, forKey: .value))
+        case .integer: self = .integer(try container.decode(Int64.self, forKey: .value))
+        case .decimal: self = .decimal(try container.decode(Double.self, forKey: .value))
+        case .boolean: self = .boolean(try container.decode(Bool.self, forKey: .value))
+        case .uuid: self = .uuid(try container.decode(UUID.self, forKey: .value))
+        case .bytes: self = .bytes(try container.decode(Data.self, forKey: .value))
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .null:
+            try container.encode(Kind.null, forKey: .kind)
+        case .text(let value):
+            try container.encode(Kind.text, forKey: .kind)
+            try container.encode(value, forKey: .value)
+        case .integer(let value):
+            try container.encode(Kind.integer, forKey: .kind)
+            try container.encode(value, forKey: .value)
+        case .decimal(let value):
+            try container.encode(Kind.decimal, forKey: .kind)
+            try container.encode(value, forKey: .value)
+        case .boolean(let value):
+            try container.encode(Kind.boolean, forKey: .kind)
+            try container.encode(value, forKey: .value)
+        case .uuid(let value):
+            try container.encode(Kind.uuid, forKey: .kind)
+            try container.encode(value, forKey: .value)
+        case .bytes(let value):
+            try container.encode(Kind.bytes, forKey: .kind)
+            try container.encode(value, forKey: .value)
+        }
+    }
 }
 
 public enum SQLQueryError: Error, Sendable, Equatable, CustomStringConvertible {
@@ -400,7 +454,7 @@ public struct SQLMigrationRunner: Sendable {
         return values.first
     }
 
-    private static func ordered(_ migrations: [SQLMigration]) throws -> [SQLMigration] {
+    static func ordered(_ migrations: [SQLMigration]) throws -> [SQLMigration] {
         var seen: Set<String> = []
         for migration in migrations {
             let bytes = Array(migration.id.utf8)

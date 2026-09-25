@@ -131,6 +131,60 @@ import Testing
     #expect(await legacyStore.recordedChecksum(id: first.id) == nil)
 }
 
+@Test func migrationCatalogLoadsSortedParameterizedArtifactsAndValidatesFilenames() throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("pearfy-migrations-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+    let first = SQLMigrationArtifact(
+        id: "001-insert-ledger-entry",
+        up: SQLMigrationCommand(
+            sql: "INSERT INTO ledger (name, payload) VALUES ($1, $2)",
+            parameters: [.text("audit"), .bytes(Data([0x01, 0x02]))]
+        ),
+        down: SQLMigrationCommand(sql: "DELETE FROM ledger WHERE name = $1", parameters: [.text("audit")])
+    )
+    let second = SQLMigrationArtifact(
+        id: "002-add-index",
+        up: SQLMigrationCommand(sql: "CREATE INDEX ledger_name_idx ON ledger (name)")
+    )
+    try first.canonicalJSON().write(to: directory.appendingPathComponent("001-insert-ledger-entry.json"), options: .atomic)
+    try second.canonicalJSON().write(to: directory.appendingPathComponent("002-add-index.json"), options: .atomic)
+
+    let catalog = try SQLMigrationCatalog(directory: directory)
+    #expect(catalog.migrations.map(\.id) == [first.id, second.id])
+    #expect(catalog.migrations[0].up.parameters == [.text("audit"), .bytes(Data([0x01, 0x02]))])
+    #expect(catalog.migrations[0].checksum == first.migration.checksum)
+
+    let mismatch = SQLMigrationArtifact(
+        id: "003-wrong-name",
+        up: SQLMigrationCommand(sql: "SELECT 1")
+    )
+    try mismatch.canonicalJSON().write(to: directory.appendingPathComponent("different-id.json"), options: .atomic)
+    var filenameMismatchRejected = false
+    do {
+        _ = try SQLMigrationCatalog(directory: directory)
+    } catch SQLMigrationCatalogError.filenameDoesNotMatch(_, let id) {
+        filenameMismatchRejected = id == mismatch.id
+    }
+    #expect(filenameMismatchRejected)
+    try FileManager.default.removeItem(at: directory.appendingPathComponent("different-id.json"))
+
+    let emptySQLArtifact = SQLMigrationArtifact(
+        id: "004-empty-sql",
+        up: SQLMigrationCommand(sql: "  \n")
+    )
+    try emptySQLArtifact.canonicalJSON().write(to: directory.appendingPathComponent("004-empty-sql.json"), options: .atomic)
+    var emptySQLRejected = false
+    do {
+        _ = try SQLMigrationCatalog(directory: directory)
+    } catch SQLMigrationCatalogError.invalidArtifact(_, let reason) {
+        emptySQLRejected = reason.contains("non-empty")
+    }
+    #expect(emptySQLRejected)
+}
+
 @Test func migrationRunnerRejectsInvalidAndDuplicateIDsBeforeDatabaseWork() async throws {
     let store = MigrationStore()
     let database = FakeDatabase(store: store)

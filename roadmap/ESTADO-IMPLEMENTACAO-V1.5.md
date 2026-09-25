@@ -15,21 +15,21 @@ Atualizado em 2026-09-25 contra o código e os testes locais. O escopo é o Pear
 | DevKit harness/agents | Ausente | Sem harness, execução isolada de tarefas, seleção de Skills ou relatório redigido. |
 | MCP | Ausente | Sem servidor/tool registry MCP nem políticas read-only/write com escopo e testes de autorização. |
 | Guardian | Ausente | Sem gates verificáveis de build/teste/segurança ligados ao registry, nem evidência reproduzível por capability. |
-| Persistência e evolução de schema | Parcial | `SQLMigrationRunner` valida IDs, grava SHA-256 de SQL/parâmetros, detecta drift para migrations declaradas, atualiza journal legado, serializa apply por advisory transaction lock PostgreSQL e expõe plan com estados pending/applied/legacy/drift. O plan só cria/atualiza o journal, não executa DDL de domínio. Ainda faltam catálogo completo, detecção de migrations removidas/gaps, planos de rollback e CLI; ver roadmap 2 G3. |
+| Persistência e evolução de schema | Parcial | `SQLMigrationCatalog` carrega artifacts JSON versionados e parametrizados; `SQLMigrationRunner` valida IDs, grava SHA-256 de SQL/parâmetros, detecta drift, atualiza journal legado, serializa apply por advisory transaction lock PostgreSQL e expõe plan pending/applied/legacy/drift sem executar DDL de domínio. Ainda faltam detecção de migrations removidas/gaps, rollback plans e CLI; ver roadmap 2 G3. |
 
 ## Validação executada
 
 - `bash scripts/test-integrations.sh --filter postgresSocialGraphEnforcesOwnerVisibilityFollowAndBlockPolicies`: 1 teste passou contra PostgreSQL local, incluindo ownership, aprovação, bloqueios, visibilidade e constraint de handle.
 - `bash scripts/test-integrations.sh --filter postgresTransactionManagerCommitsAndRollsBackOnOnePhysicalTransaction`: 1 teste passou contra PostgreSQL local.
-- `bash scripts/test-integrations.sh`: 98 testes passaram em Debug com PostgreSQL/Redis locais.
-- `bash scripts/test-integrations.sh -c release`: 98 testes passaram em Release com PostgreSQL/Redis locais.
-- `bash scripts/test-unit.sh`: 98 testes passaram em Debug sem depender de serviços externos.
+- `bash scripts/test-integrations.sh`: 99 testes passaram em Debug com PostgreSQL/Redis locais.
+- `bash scripts/test-integrations.sh -c release`: 99 testes passaram em Release com PostgreSQL/Redis locais.
+- `bash scripts/test-unit.sh`: 99 testes passaram em Debug sem depender de serviços externos.
 
 Esses resultados cobrem apenas as capacidades presentes neste checkout; não certificam capacidades marcadas como ausentes/parciais.
 
 ## Sequência independente
 
-1. Completar G3 do roadmap 2: catálogo/artifacts de migrations, detecção de gaps/removals, rollback plans e CLI segura.
+1. Completar G3 do roadmap 2: detecção de gaps/removals, rollback plans e CLI segura; catálogo versionado e API de plan já existem.
 2. Completar Transaction Manager com isolamento contra uso paralelo de uma unit, propagation adicional e reconciliação/fault tests de commit unknown.
 3. Evoluir Module Registry para versões/capabilities verificáveis e módulos opt-in.
 4. Evoluir Social Graph e implementar Content/Moderation/Feed em slices com testes de privacy e concorrência.
