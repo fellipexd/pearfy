@@ -17,7 +17,7 @@ Atualizado em 2026-09-25 contra o código e testes do checkout ativo. As pastas 
 | G8 — PaymentEngine | Ausente | Sem Money/transferências/reservas/ledger/idempotência/outbox financeiros. |
 | G9 — Guardian | Ausente | Workflow de build/teste e verificações pontuais existem; não há enforcement fail-closed das políticas de SQL, migration, pagamentos ou Connect. |
 | G10 — gRPC/MCP | Ausente | Não há transporte gRPC nem servidor MCP. |
-| G11 — release | Parcial | 99 testes locais passam em Debug/Release com PostgreSQL/Redis, incluindo Social/PostgreSQL, transaction manager e migration artifacts/plan/locking/drift; workflow macOS/Linux está configurado, mas sem execução remota e sem revisão/certificação completa de release. |
+| G11 — release | Parcial | 100 testes locais passam em Debug/Release com PostgreSQL/Redis, incluindo Connect schemas, Social/PostgreSQL, transaction manager e migration artifacts/plan/locking/drift; workflow macOS/Linux está configurado, mas sem execução remota e sem revisão/certificação completa de release. |
 
 ## Roadmap 3 — Connect v1.3 e extensões v1.4
 
@@ -25,7 +25,7 @@ Atualizado em 2026-09-25 contra o código e testes do checkout ativo. As pastas 
 
 - **PCON-000 — inventário:** feito.
 - **PCON-001 — Route Groups:** fatia implementada: `@RouteGroup` descreve ID/prefix/SDK targets; `@RestController(group:)` compõe o prefixo, registra o grupo e mantém autorização independente; OpenAPI e descritores de rota podem ser filtrados por grupo.
-- **PCON-002/003 — IR/OpenAPI:** parcial. `PearfyConnectCompiler` gera snapshot JSON determinístico com revision/hash, grupos, operation IDs/path parameters e policies; OpenAPI também exporta por grupo. O IR é metadata-only: faltam schemas de request/response, operation IDs authoritativos, `.pearfy` e diff compatível.
+- **PCON-002/003 — IR/OpenAPI:** parcial. `PearfyConnectCompiler` gera snapshot JSON determinístico com revision/hash, grupos, operation IDs/path parameters, auth policies e referências request/response; builtins e schemas registrados são resolvidos transitivamente e schemas ausentes bloqueiam compile. OpenAPI exporta grupos e type refs, mas SDK generation permanece desligada; faltam discovery automático de DTOs, `.pearfy`, diff compatível e SDKs.
 - **PCON-004–008 — pacote, SDKs e exports:** ausentes; sem SDK iOS/Android/TypeScript gerado, Postman ou cURL individual.
 - **PCON-009–018 — Guardian, compatibilidade, WS/gRPC e payload sealed:** ausentes.
 
@@ -48,8 +48,8 @@ Atualizado em 2026-09-25 contra o código e testes do checkout ativo. As pastas 
 
 ## Validação da fatia atual
 
-- `bash scripts/test-integrations.sh`: 99 testes passaram em Debug com PostgreSQL e Redis locais; inclui groups/Connect snapshot, Entity/Schema registry, UUIDv7, schema plans, migration artifacts/plans/checksums/locks, Transaction Manager, Module Manager, Social graph, HTTP, DI e adapters.
-- `bash scripts/test-integrations.sh -c release`: os mesmos 99 passaram em Release.
+- `bash scripts/test-integrations.sh`: 100 testes passaram em Debug com PostgreSQL e Redis locais; inclui groups/Connect schema snapshot, Entity/Schema registry, UUIDv7, schema plans, migration artifacts/plans/checksums/locks, Transaction Manager, Module Manager, Social graph, HTTP, DI e adapters.
+- `bash scripts/test-integrations.sh -c release`: os mesmos 100 passaram em Release.
 - `bash scripts/verify-aot-snapshot.sh`: passou; `Examples/GreeterFeature` e `Examples/DiscoveryApp` compilaram após as alterações de macros.
 - E2E local do Module Manager: scaffold, `add postgres`, `doctor` e build; `remove postgres`, `doctor` e novo build passaram.
 

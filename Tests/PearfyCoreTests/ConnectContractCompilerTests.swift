@@ -50,6 +50,82 @@ import Testing
     #expect(collisionRejected)
 }
 
+@Test func connectCompilerResolvesTypedRequestAndResponseSchemas() async throws {
+    let router = HTTPRouter()
+    try await ProfileContractController.__pearfy_registerRoutes(in: router, instance: ProfileContractController())
+    try await router.freeze()
+
+    let schemas = [
+        PearfyContractSchema(
+            id: "ProfileInput",
+            type: .object,
+            properties: ["displayName": PearfyContractSchemaReference(id: "String")],
+            required: ["displayName"]
+        ),
+        PearfyContractSchema(
+            id: "ProfileOutput",
+            type: .object,
+            properties: [
+                "id": PearfyContractSchemaReference(id: "UUID"),
+                "displayName": PearfyContractSchemaReference(id: "String")
+            ],
+            required: ["id", "displayName"]
+        )
+    ]
+    let compiler = PearfyConnectCompiler()
+    let contract = try await compiler.compile(
+        router: router,
+        buildRevision: "typed-schema-revision",
+        schemas: schemas
+    )
+
+    #expect(contract.schemaCoverage == .typedSchemaReferences)
+    #expect(contract.canGenerateSDKs == false)
+    #expect(Set(contract.schemas.map(\.id)).isSuperset(of: ["ProfileInput", "ProfileOutput", "String", "UUID"]))
+    let createOperation = try #require(contract.operations.first(where: { $0.method == "POST" }))
+    #expect(createOperation.requestSchema == PearfyContractSchemaReference(id: "ProfileInput"))
+    #expect(createOperation.responseSchema == PearfyContractSchemaReference(id: "ProfileOutput"))
+
+    let listOperation = try #require(contract.operations.first(where: { $0.path == "/profiles/all" }))
+    let listSchema = try #require(contract.schemas.first(where: { $0.id == listOperation.responseSchema?.id }))
+    #expect(listSchema.type == .array)
+    #expect(listSchema.items?.id == "ProfileOutput")
+
+    let findOperation = try #require(contract.operations.first(where: { $0.path == "/profiles/{id}" }))
+    #expect(findOperation.responseSchema == PearfyContractSchemaReference(id: "ProfileOutput", nullable: true))
+
+    let reorderedSchemas = [
+        PearfyContractSchema(
+            id: "ProfileOutput",
+            type: .object,
+            properties: [
+                "id": PearfyContractSchemaReference(id: "UUID"),
+                "displayName": PearfyContractSchemaReference(id: "String")
+            ],
+            required: ["displayName", "id"]
+        ),
+        schemas[0]
+    ]
+    let reorderedContract = try await compiler.compile(
+        router: router,
+        buildRevision: "typed-schema-revision",
+        schemas: reorderedSchemas
+    )
+    #expect(try contract.canonicalJSON() == reorderedContract.canonicalJSON())
+
+    var missingSchemaRejected = false
+    do {
+        _ = try await compiler.compile(
+            router: router,
+            buildRevision: "typed-schema-revision",
+            schemas: [schemas[0]]
+        )
+    } catch PearfyConnectCompilerError.missingSchema("ProfileOutput") {
+        missingSchemaRejected = true
+    }
+    #expect(missingSchemaRejected)
+}
+
 @RouteGroup(name: "mobile", prefix: "/app", sdk: [.ios, .android])
 private enum MobileContractGroup {}
 
@@ -57,7 +133,7 @@ private enum MobileContractGroup {}
 private struct MobileContractController: Sendable {
     @Get("/{id}")
     @RolesAllowed("USER")
-    func find(@PathVariable id: String) -> String { id }
+    func find(@PathVariable id: String) -> HTTPResponse { .text(id) }
 }
 
 @RouteGroup(name: "internal", prefix: "/internal", sdk: [])
@@ -82,4 +158,33 @@ private struct CollisionContractController: Sendable {
     @Get("/a_b/c")
     @PermitAll
     func second() -> String { "second" }
+}
+
+@RouteGroup(name: "profiles", prefix: "/profiles", sdk: [.typescript])
+private enum ProfileContractGroup {}
+
+@RestController(group: ProfileContractGroup.self)
+private struct ProfileContractController: Sendable {
+    @Post
+    @PermitAll
+    func create(@RequestBody input: ProfileInput) -> ProfileOutput {
+        ProfileOutput(id: "profile-1", displayName: input.displayName)
+    }
+
+    @Get("/all")
+    @PermitAll
+    func list() -> [ProfileOutput] { [] }
+
+    @Get("/{id}")
+    @PermitAll
+    func find(@PathVariable id: String) -> ProfileOutput? { nil }
+}
+
+private struct ProfileInput: Codable, Sendable {
+    let displayName: String
+}
+
+private struct ProfileOutput: Codable, Sendable {
+    let id: String
+    let displayName: String
 }

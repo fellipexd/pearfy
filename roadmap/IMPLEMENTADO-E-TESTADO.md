@@ -8,7 +8,7 @@
 
 - **DI e ciclo de vida:** registry e validação antecipada de dependências, singletons e factories assíncronas concorrentes, bindings por tipo/qualifier, escopos de request e inicialização/encerramento ordenados.
 - **Macros, discovery e schema:** macros para componentes/controllers, `@Entity/@ID/@Column`, Route Groups, registry de componentes/schemas por target, UUIDv7 e scaffold `HelloPearfy`.
-- **Web, HTTP e Connect:** router com grupos/prefixos, snapshot de contrato routes-only, OpenAPI 3.1 filtrado por grupo, limites, admission/deadline; listener HTTP/1.1 SwiftNIO e shutdown gracioso.
+- **Web, HTTP e Connect:** router com grupos/prefixos, IR determinístico com operation/auth metadata e refs request/response, OpenAPI 3.1 filtrado por grupo, limites, admission/deadline; listener HTTP/1.1 SwiftNIO e shutdown gracioso. SDK generation continua desabilitada até completar discovery/diff de schemas.
 - **Validação e segurança:** validação declarativa e por macros, API key, JWT HMAC, autenticação Bearer e autorização por roles.
 - **Dados e adapters:** SQL parametrizado, adapter PostgreSQL transacional, SchemaIR/fingerprint, plano PostgreSQL inicial e migrations com checksum SHA-256, detecção de drift e lock transacional; `PearfyTransactions` fornece unit-of-work genérica REQUIRED, rollback-only e classificação de commit unknown.
 - **Cache e messaging:** cache local/Redis e broker local/Redis com ack, retry, DLQ e recuperação.
@@ -24,9 +24,9 @@ Executados no checkout em macOS arm64, com Apple Swift 6.4:
 
 | Comando | Resultado |
 |---|---|
-| `bash scripts/test-unit.sh` | 99 testes passaram em Debug; sem os hosts de serviços configurados, os testes de integração externa retornam sem conectar. |
-| `bash scripts/test-integrations.sh` | 99 testes passaram em Debug com PostgreSQL e Redis locais reais, incluindo Social, Transaction Manager e migration artifacts/plan/locking/drift. |
-| `bash scripts/test-integrations.sh -c release` | Os mesmos 99 testes passaram em Release com integrações reais, incluindo Social, Transaction Manager e migration artifacts/plan/locking/drift. |
+| `bash scripts/test-unit.sh` | 100 testes passaram em Debug; sem os hosts de serviços configurados, os testes de integração externa retornam sem conectar. |
+| `bash scripts/test-integrations.sh` | 100 testes passaram em Debug com PostgreSQL e Redis locais reais, incluindo Connect schema refs, Social, Transaction Manager e migration artifacts/plan/locking/drift. |
+| `bash scripts/test-integrations.sh -c release` | Os mesmos 100 testes passaram em Release com integrações reais, incluindo Connect schema refs, Social, Transaction Manager e migration artifacts/plan/locking/drift. |
 | `bash scripts/verify-aot-snapshot.sh` | Registry AOT gerado corresponde ao snapshot versionado. |
 | Build dos exemplos `GreeterFeature` e `DiscoveryApp` | Ambos compilaram após as macros de entidade/discovery. |
 

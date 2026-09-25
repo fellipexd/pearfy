@@ -130,6 +130,9 @@ public struct RestControllerMacro: MemberMacro {
         let functionName = function.name.text
         var localBindings: [String] = []
         var callArguments: [String] = []
+        let requestTypeName = function.signature.parameterClause.parameters.first(where: {
+            hasAttribute("RequestBody", on: $0) || hasAttribute("Valid", on: $0)
+        })?.type.trimmedDescription
         let methodAttributes = attributes(on: function)
         let methodPermitAll = hasAttribute("PermitAll", in: methodAttributes)
         let methodRoles = roleArguments(in: methodAttributes)
@@ -205,6 +208,9 @@ public struct RestControllerMacro: MemberMacro {
         let awaitPrefix = effects?.asyncSpecifier == nil ? "" : "await "
         let call = "\(tryPrefix)\(awaitPrefix)instance.\(functionName)(\(callArguments.joined(separator: ", ")))"
         let returnType = function.signature.returnClause?.type.trimmedDescription ?? "Void"
+        let responseTypeName: String? = ["Void", "()", "HTTPResponse", "PearfyWeb.HTTPResponse"].contains(returnType)
+            ? nil
+            : returnType
         let responseStatus = attributes(on: function)
             .first(where: { attributeName($0) == "ResponseStatus" })
             .flatMap(firstArgument)
@@ -224,8 +230,14 @@ public struct RestControllerMacro: MemberMacro {
 
         let allBindings = localBindings.map { "            \($0)" }.joined(separator: "\n")
         let groupArgument = routeGroupName.map { ", group: \($0)" } ?? ""
+        let requestTypeArgument = requestTypeName.map { ", requestTypeName: \(swiftString($0))" } ?? ""
+        let responseTypeArgument = responseTypeName.map { ", responseTypeName: \(swiftString($0))" } ?? ""
         return """
-        try await router.on(.\(method), path: \(swiftString(path)), access: \(routeAccess)\(groupArgument)) { request in
+        try await router.on(
+            .\(method),
+            path: \(swiftString(path)),
+            access: \(routeAccess)\(groupArgument)\(requestTypeArgument)\(responseTypeArgument)
+        ) { request in
         \(allBindings)
             \(response.replacingOccurrences(of: "\n", with: "\n            "))
         }

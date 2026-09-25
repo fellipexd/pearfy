@@ -18,6 +18,8 @@ public actor HTTPRouter {
         let segments: [Segment]
         let literalCount: Int
         let group: String?
+        let requestTypeName: String?
+        let responseTypeName: String?
         let access: HTTPRouteAccess
         let handler: HTTPRouteHandler
     }
@@ -50,6 +52,8 @@ public actor HTTPRouter {
         path: String,
         access: HTTPRouteAccess = .permitAll,
         group: String? = nil,
+        requestTypeName: String? = nil,
+        responseTypeName: String? = nil,
         handler: @escaping HTTPRouteHandler
     ) throws {
         guard !frozen else { throw HTTPError.routerFrozen }
@@ -77,6 +81,8 @@ public actor HTTPRouter {
             segments: parsed.segments,
             literalCount: parsed.literalCount,
             group: registeredGroup?.name,
+            requestTypeName: requestTypeName,
+            responseTypeName: responseTypeName,
             access: access,
             handler: handler
         ))
@@ -107,18 +113,38 @@ public actor HTTPRouter {
         _ path: String,
         access: HTTPRouteAccess = .permitAll,
         group: String? = nil,
+        requestTypeName: String? = nil,
+        responseTypeName: String? = nil,
         handler: @escaping HTTPRouteHandler
     ) throws {
-        try on(.get, path: path, access: access, group: group, handler: handler)
+        try on(
+            .get,
+            path: path,
+            access: access,
+            group: group,
+            requestTypeName: requestTypeName,
+            responseTypeName: responseTypeName,
+            handler: handler
+        )
     }
 
     public func post(
         _ path: String,
         access: HTTPRouteAccess = .permitAll,
         group: String? = nil,
+        requestTypeName: String? = nil,
+        responseTypeName: String? = nil,
         handler: @escaping HTTPRouteHandler
     ) throws {
-        try on(.post, path: path, access: access, group: group, handler: handler)
+        try on(
+            .post,
+            path: path,
+            access: access,
+            group: group,
+            requestTypeName: requestTypeName,
+            responseTypeName: responseTypeName,
+            handler: handler
+        )
     }
 
     public func use(_ middleware: @escaping HTTPMiddleware) throws {
@@ -177,7 +203,16 @@ public actor HTTPRouter {
         if let group, groupsByName[group] == nil { throw HTTPRouteGroupError.notRegistered(group) }
         return routes
             .filter { group == nil || $0.group == group }
-            .map { HTTPRouteContractOperation(method: $0.method, path: $0.path, access: $0.access, group: $0.group) }
+            .map {
+                HTTPRouteContractOperation(
+                    method: $0.method,
+                    path: $0.path,
+                    access: $0.access,
+                    group: $0.group,
+                    requestTypeName: $0.requestTypeName,
+                    responseTypeName: $0.responseTypeName
+                )
+            }
             .sorted {
                 if $0.path != $1.path { return $0.path < $1.path }
                 return $0.method.description < $1.method.description
@@ -215,6 +250,12 @@ public actor HTTPRouter {
                 operation["x-pearfy-group"] = routeGroup.name
                 operation["x-pearfy-contract-version"] = routeGroup.contractVersion
                 operation["x-pearfy-sdk-targets"] = routeGroup.sdkTargets.map(\.rawValue).sorted()
+            }
+            if let requestTypeName = route.requestTypeName {
+                operation["x-pearfy-request-schema"] = requestTypeName
+            }
+            if let responseTypeName = route.responseTypeName {
+                operation["x-pearfy-response-schema"] = responseTypeName
             }
             paths[route.path, default: [:]][route.method.description.lowercased()] = operation
         }

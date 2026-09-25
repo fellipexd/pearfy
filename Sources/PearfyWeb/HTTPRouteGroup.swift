@@ -34,12 +34,23 @@ public struct HTTPRouteContractOperation: Sendable, Equatable {
     public let path: String
     public let access: HTTPRouteAccess
     public let group: String?
+    public let requestTypeName: String?
+    public let responseTypeName: String?
 
-    public init(method: HTTPMethod, path: String, access: HTTPRouteAccess, group: String?) {
+    public init(
+        method: HTTPMethod,
+        path: String,
+        access: HTTPRouteAccess,
+        group: String?,
+        requestTypeName: String? = nil,
+        responseTypeName: String? = nil
+    ) {
         self.method = method
         self.path = path
         self.access = access
         self.group = group
+        self.requestTypeName = requestTypeName
+        self.responseTypeName = responseTypeName
     }
 }
 
