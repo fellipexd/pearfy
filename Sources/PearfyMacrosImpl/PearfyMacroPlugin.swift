@@ -1,6 +1,7 @@
 import SwiftCompilerPlugin
 import SwiftSyntaxMacros
 
+// Kept outside `main.swift` so SwiftPM compiles the @main entry point as a library.
 @main
 struct PearfyMacroPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [

@@ -5,6 +5,10 @@ import PearfyJobs
 import PearfyMessaging
 import PearfyObservability
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 #if os(macOS)
 import Darwin
 #elseif os(Linux)
@@ -177,7 +181,8 @@ enum ModuleBaselineBenchmark {
     private static func peakResidentMemoryBytes() -> Int64 {
         #if os(macOS) || os(Linux)
         var usage = rusage()
-        guard getrusage(RUSAGE_SELF, &usage) == 0 else { return -1 }
+        let currentProcess: Int32 = 0 // RUSAGE_SELF on Darwin and Linux.
+        guard getrusage(currentProcess, &usage) == 0 else { return -1 }
         #if os(macOS)
         return Int64(usage.ru_maxrss)
         #else

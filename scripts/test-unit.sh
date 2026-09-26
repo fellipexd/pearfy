@@ -11,12 +11,12 @@ case "$(uname -s)" in
 esac
 
 runtime_root="$(swift -print-target-info | python3 -c 'import json,sys; print(json.load(sys.stdin)["paths"]["runtimeResourcePath"])')"
-testing_plugin="$runtime_root/host/plugins/testing/libTestingMacros.$plugin_extension"
-if [[ ! -f "$testing_plugin" ]]; then
-  printf 'Testing macro plugin not found: %s\n' "$testing_plugin" >&2
-  exit 1
+testing_plugin="$(python3 -c 'import pathlib,sys; plugins=pathlib.Path(sys.argv[1])/"host/plugins"; extension=sys.argv[2]; candidates=[plugins/"testing"/f"libTestingMacros.{extension}", plugins/f"libTestingMacros.{extension}"]; candidates.extend(sorted(plugins.rglob(f"*TestingMacros*.{extension}")) if plugins.is_dir() else []); match=next((candidate for candidate in candidates if candidate.is_file()), None); print(match or "")' "$runtime_root" "$plugin_extension")"
+if [[ -n "$testing_plugin" ]]; then
+  swift test "$@" \
+    -Xswiftc -load-plugin-library \
+    -Xswiftc "$testing_plugin"
+else
+  printf 'Testing macro plugin not found under %s/host/plugins; trying SwiftPM plugin discovery\n' "$runtime_root" >&2
+  swift test "$@"
 fi
-
-swift test "$@" \
-  -Xswiftc -load-plugin-library \
-  -Xswiftc "$testing_plugin"
