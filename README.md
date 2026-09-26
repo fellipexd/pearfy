@@ -51,7 +51,7 @@ bash scripts/test-integrations.sh -c release
 
 Para rodar incluindo as integrações locais, inicie PostgreSQL/Redis e use `bash scripts/test-integrations.sh` (aceita `PEARFY_TEST_POSTGRES_*` e `PEARFY_TEST_REDIS_*`).
 
-O workflow `.github/workflows/performance.yml` configura release build/testes em macOS/Linux, integrações PostgreSQL/Redis no Linux e relatório HTTP manual/semanal não bloqueante; aguarda execução remota para validar os runners. Gates pendentes dos roadmaps 2/3/v1.5 estão nas matrizes em `roadmap/`; CPU/memória têm fallback local via `sample`, `heap` e RSS (`ps`).
+O workflow `.github/workflows/performance.yml` executa builds Release em macOS/Linux; as suítes de teste do Actions estão temporariamente pausadas enquanto os erros de Swift 6.2 são investigados. O relatório HTTP permanece manual/semanal e não bloqueante; os testes continuam disponíveis localmente pelos scripts `scripts/test-unit.sh` e `scripts/test-integrations.sh`. Gates pendentes dos roadmaps 2/3/v1.5 estão nas matrizes em `roadmap/`; CPU/memória têm fallback local via `sample`, `heap` e RSS (`ps`).
 
 ## CLI disponível
 
