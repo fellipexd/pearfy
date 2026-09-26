@@ -11,7 +11,21 @@ case "$(uname -s)" in
 esac
 
 runtime_root="$(swift -print-target-info | python3 -c 'import json,sys; print(json.load(sys.stdin)["paths"]["runtimeResourcePath"])')"
-testing_plugin="$(python3 -c 'import pathlib,sys; plugins=pathlib.Path(sys.argv[1])/"host/plugins"; extension=sys.argv[2]; candidates=[plugins/"testing"/f"libTestingMacros.{extension}", plugins/f"libTestingMacros.{extension}"]; candidates.extend(sorted(plugins.rglob(f"*TestingMacros*.{extension}")) if plugins.is_dir() else []); match=next((candidate for candidate in candidates if candidate.is_file()), None); print(match or "")' "$runtime_root" "$plugin_extension")"
+testing_plugin="$(python3 -c '
+import pathlib
+import sys
+
+plugins = pathlib.Path(sys.argv[1]) / "host" / "plugins"
+extension = sys.argv[2]
+candidates = [
+    plugins / "testing" / f"libTestingMacros.{extension}",
+    plugins / f"libTestingMacros.{extension}",
+]
+if plugins.is_dir():
+    candidates.extend(sorted(plugins.rglob(f"*TestingMacros*.{extension}")))
+match = next((candidate for candidate in candidates if candidate.is_file()), None)
+print(match or "")
+' "$runtime_root" "$plugin_extension")"
 if [[ -n "$testing_plugin" ]]; then
   swift test "$@" \
     -Xswiftc -load-plugin-library \

@@ -30,6 +30,7 @@ struct UserService: Sendable {
     }
 }
 
+// Keep the @main declaration outside `main.swift` for SwiftPM toolchain compatibility.
 @main
 struct HelloPearfy {
     static func main() async throws {
