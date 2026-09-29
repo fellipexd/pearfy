@@ -152,6 +152,13 @@ public actor HTTPRouter {
         self.middleware.append(middleware)
     }
 
+    /// Installs middleware ahead of existing middleware, useful for observers
+    /// that must record responses produced by later short-circuiting middleware.
+    public func useFirst(_ middleware: @escaping HTTPMiddleware) throws {
+        guard !frozen else { throw HTTPError.routerFrozen }
+        self.middleware.insert(middleware, at: 0)
+    }
+
     public func freeze() throws {
         frozen = true
     }

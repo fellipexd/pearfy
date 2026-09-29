@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f8f5">
+  <meta name="referrer" content="no-referrer">
+  <title>Pearfy DevKit</title>
+  <link rel="stylesheet" href="/__pearfy/devkit/assets/devkit.css">
+  <link rel="stylesheet" href="/__pearfy/devkit/assets/traces.css">
+  <script src="/__pearfy/devkit/assets/devkit.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="/__pearfy/devkit" aria-label="Pearfy DevKit início"><span class="pear">●</span><span><b>pearfy<span>.</span></b><small>DEVKIT</small></span></a>
+      <p class="nav-label">WORKSPACE</p>
+      <nav aria-label="Navegação principal">
+        <a class="selected" href="#overview">Visão geral</a>
+        <a href="#routes">Rotas</a>
+        <a href="#input-traces">Traces de entrada</a>
+        <a href="#work-traces">Traces de works</a>
+        <a href="#errors">Erros HTTP</a>
+        <a href="#logs">Logs</a>
+        <a href="#queries">Banco & queries</a>
+        <a href="#instances">Instâncias</a>
+      </nav>
+      <div class="sidebar-note"><span class="dot"></span><span>Fontes conectadas aparecem aqui<br><small>Nenhum dado fictício é exibido</small></span></div>
+    </aside>
+    <main>
+      <header class="topbar"><div><span class="muted">Pearfy</span><span class="divider">/</span><b>DevKit</b></div><span class="local-pill">AMBIENTE DE DESENVOLVIMENTO</span></header>
+      <section class="heading">
+        <div><p class="eyebrow">OBSERVABILIDADE DE DESENVOLVIMENTO</p><h1>Visão da aplicação</h1><p class="muted">Rotas reais e telemetria disponível neste processo.</p></div>
+        <div class="controls"><label for="period">Janela</label><select id="period"><option value="15m">Últimos 15 min</option><option value="1h">Última 1 hora</option><option value="24h">Últimas 24 horas</option></select><button id="refresh" class="button">Atualizar</button></div>
+      </section>
+      <div class="instance-filter"><label for="instance">Instância</label><select id="instance"><option value="">Todas / agregado</option></select></div>
+      <section id="auth" class="panel auth-panel">
+        <div><h2>Conectar ao DevKit</h2><p class="muted">Informe o bearer token configurado pela aplicação. Após conectar, ele será salvo neste navegador; use “Desconectar” para removê-lo.</p></div>
+        <form id="auth-form"><label class="sr-only" for="token">Bearer token</label><input id="token" type="password" autocomplete="off" required minlength="16" placeholder="Bearer token"><button class="button primary" type="submit">Conectar</button></form>
+        <p id="message" class="message" role="status"></p>
+      </section>
+      <section id="dashboard" hidden>
+        <div id="overview" class="status-row"><div><span id="service" class="service-name">Pearfy</span><span id="scope" class="scope"></span></div><div class="controls"><span id="token-state" class="muted"></span><span id="updated" class="muted"></span><button id="disconnect" class="button" type="button">Desconectar</button></div></div>
+        <div id="cards" class="cards"></div>
+        <section id="routes" class="panel section-panel"><div class="section-head"><div><h2>Rotas com tráfego</h2><p class="muted">Padrão mostra chamadas na janela. Com “Mostrar sem chamadas”, latências — indicam ausência de amostras; N/D indica fonte indisponível.</p></div><div class="controls"><label class="muted" for="show-empty-routes"><input id="show-empty-routes" type="checkbox"> Mostrar sem chamadas</label><input id="search" type="search" placeholder="Filtrar método ou rota" aria-label="Filtrar rotas"></div></div><div class="table-scroll"><table><thead><tr><th>MÉTODO</th><th>ROTA</th><th>GRUPO</th><th>REQUISIÇÕES</th><th>MÉDIA</th><th>P50</th><th>P95</th><th>P99</th><th>ERROS</th></tr></thead><tbody id="routes"></tbody></table></div><p id="route-empty" class="empty" hidden></p></section>
+        <section id="input-traces" class="panel section-panel"><div class="section-head"><div><h2>Traces de rotas de entrada</h2><p class="muted">Amostra local limitada a 512 requisições; rotas são templates e payloads não são registrados.</p></div></div><div id="input-traces-content" class="empty">Nenhum trace de rota de entrada nesta janela.</div></section>
+        <section id="work-traces" class="panel section-panel"><div class="section-head"><div><h2>Traces de works</h2><p class="muted">Execuções concluídas do scheduler ou registradas por um provider, sem payload nem detalhes de erro. Atualização automática a cada 10 segundos.</p></div></div><div id="work-traces-content" class="empty">Nenhum trace de work nesta janela.</div></section>
+        <section id="errors" class="panel section-panel"><div class="section-head"><div><h2>Erros HTTP</h2><p class="muted">Respostas 4xx e 5xx correlacionadas ao trace, sem corpo ou mensagem de exceção.</p></div></div><div id="errors-content" class="table-scroll empty">Nenhum erro nesta janela.</div></section>
+        <section id="logs" class="panel section-panel"><div class="section-head"><div><h2>Logs</h2><p class="muted">Somente mensagens redigidas pelo provider podem ser exibidas.</p></div></div><div id="logs-content" class="empty">Sem fonte de logs conectada.</div></section>
+        <section id="instances" class="panel section-panel"><div class="section-head"><div><h2>Instâncias e recursos</h2><p class="muted">CPU é a utilização no último intervalo de 1 s; RSS é memória residente atual. Storage aparece apenas com provider próprio.</p></div></div><div id="instances-content" class="empty">Sem fonte de recursos conectada.</div></section>
+        <section id="queries" class="panel section-panel"><div class="section-head"><div><h2>Banco & queries</h2><p class="muted">Fingerprints HMAC temporários e estatísticas por query/rota, sem SQL ou bindings.</p></div></div><div id="queries-content" class="empty">Sem fonte de métricas de queries conectada.</div></section>
+      </section>
+      <footer><span>Pearfy DevKit</span><span>Dados servidos pela aplicação · bearer salvo apenas neste navegador</span></footer>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,6 +1,25 @@
 import Foundation
 import PearfyContext
 
+public enum JobExecutionStatus: String, Sendable, Equatable {
+    case succeeded
+    case failed
+}
+
+public struct JobExecution: Sendable, Equatable {
+    public let name: String
+    public let startedAt: Date
+    public let durationMilliseconds: Double
+    public let status: JobExecutionStatus
+
+    public init(name: String, startedAt: Date, durationMilliseconds: Double, status: JobExecutionStatus) {
+        self.name = name
+        self.startedAt = startedAt
+        self.durationMilliseconds = durationMilliseconds
+        self.status = status
+    }
+}
+
 public struct JobSnapshot: Sendable, Equatable {
     public let name: String
     public let executions: Int
@@ -26,9 +45,11 @@ public enum JobSchedulerError: Error, Sendable, Equatable, CustomStringConvertib
 
 /// Local, cooperative fixed-delay scheduler. It does not provide cluster-wide
 /// exclusivity, cron semantics, persistence, or distributed checkpoints.
+/// A scheduled definition may request one immediate run before fixed-delay intervals begin.
 public actor JobScheduler: ApplicationLifecycle {
     private struct Definition: Sendable {
         let interval: Duration
+        let runImmediately: Bool
         let handler: @Sendable () async throws -> Void
     }
 
@@ -39,16 +60,22 @@ public actor JobScheduler: ApplicationLifecycle {
     private var lastFailures: [String: String] = [:]
     private var started = false
     private let maximumJobs: Int
+    private let onExecution: (@Sendable (JobExecution) async -> Void)?
 
     public nonisolated let name = "Pearfy job scheduler"
 
-    public init(maximumJobs: Int = 256) {
+    public init(
+        maximumJobs: Int = 256,
+        onExecution: (@Sendable (JobExecution) async -> Void)? = nil
+    ) {
         self.maximumJobs = max(1, maximumJobs)
+        self.onExecution = onExecution
     }
 
     public func schedule(
         _ name: String,
         every interval: Duration,
+        runImmediately: Bool = false,
         handler: @escaping @Sendable () async throws -> Void
     ) throws {
         guard !name.isEmpty, name.utf8.count <= 128,
@@ -60,7 +87,11 @@ public actor JobScheduler: ApplicationLifecycle {
         guard interval > .zero else { throw JobSchedulerError.invalidInterval }
         guard definitions[name] == nil else { throw JobSchedulerError.duplicateJob(name) }
         guard definitions.count < maximumJobs else { throw JobSchedulerError.maximumJobs(maximumJobs) }
-        definitions[name] = Definition(interval: interval, handler: handler)
+        definitions[name] = Definition(
+            interval: interval,
+            runImmediately: runImmediately,
+            handler: handler
+        )
         if started { launch(name) }
     }
 
@@ -98,14 +129,22 @@ public actor JobScheduler: ApplicationLifecycle {
     }
 
     private func runLoop(_ name: String, definition: Definition) async {
+        var runImmediately = definition.runImmediately
         while !Task.isCancelled {
-            do {
-                try await Task.sleep(for: definition.interval)
-                try Task.checkCancellation()
-            } catch {
-                break
+            if !runImmediately {
+                do {
+                    try await Task.sleep(for: definition.interval)
+                    try Task.checkCancellation()
+                } catch {
+                    break
+                }
             }
+            runImmediately = false
             executionCounts[name, default: 0] += 1
+            let startedAt = Date()
+            let clock = ContinuousClock()
+            let start = clock.now
+            var status = JobExecutionStatus.succeeded
             do {
                 try await definition.handler()
                 lastFailures.removeValue(forKey: name)
@@ -114,6 +153,21 @@ public actor JobScheduler: ApplicationLifecycle {
             } catch {
                 failureCounts[name, default: 0] += 1
                 lastFailures[name] = String(reflecting: type(of: error))
+                status = .failed
+            }
+            if let onExecution {
+                let elapsed = start.duration(to: clock.now).components
+                let durationMilliseconds = max(
+                    0,
+                    Double(elapsed.seconds) * 1_000
+                        + Double(elapsed.attoseconds) / 1_000_000_000_000_000
+                )
+                await onExecution(JobExecution(
+                    name: name,
+                    startedAt: startedAt,
+                    durationMilliseconds: durationMilliseconds,
+                    status: status
+                ))
             }
         }
         tasks.removeValue(forKey: name)

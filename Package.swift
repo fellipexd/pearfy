@@ -27,6 +27,7 @@ let package = Package(
         .library(name: "PearfyCloud", targets: ["PearfyCloud"]),
         .library(name: "PearfyAI", targets: ["PearfyAI"]),
         .library(name: "PearfyObservability", targets: ["PearfyObservability"]),
+        .library(name: "PearfyDevKitUI", targets: ["PearfyDevKitUI"]),
         .library(name: "PearfyTesting", targets: ["PearfyTesting"]),
         .library(name: "PearfyMacros", targets: ["PearfyMacros"]),
         .plugin(name: "PearfyDiscoveryPlugin", targets: ["PearfyDiscoveryPlugin"]),
@@ -94,7 +95,15 @@ let package = Package(
         .target(name: "PearfyJobs", dependencies: ["PearfyContext"]),
         .target(name: "PearfyCloud", dependencies: ["PearfyObservability"]),
         .target(name: "PearfyAI", dependencies: ["PearfyCloud"]),
-        .target(name: "PearfyObservability", dependencies: ["PearfyWeb"]),
+        .target(
+            name: "PearfyObservability",
+            dependencies: ["PearfyWeb", .product(name: "Crypto", package: "swift-crypto")]
+        ),
+        .target(
+            name: "PearfyDevKitUI",
+            dependencies: ["PearfyWeb", "PearfyObservability"],
+            resources: [.process("Resources")]
+        ),
         .target(
             name: "PearfyRedis",
             dependencies: [
@@ -193,6 +202,7 @@ let package = Package(
                 "PearfyJobs",
                 "PearfyCloud",
                 "PearfyAI",
+                "PearfyDevKitUI",
                 "PearfyObservability",
                 "PearfyTesting",
                 "PearfyMacros",

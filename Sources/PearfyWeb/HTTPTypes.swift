@@ -67,6 +67,8 @@ public struct HTTPRequest: Sendable, Equatable {
     public static let rolesContextKey = "pearfy.security.roles"
     public static let permitAllContextKey = "pearfy.security.permitAll"
     public static let routeTemplateContextKey = "pearfy.http.routeTemplate"
+    public static let traceIDContextKey = "pearfy.observability.traceID"
+    public static let spanIDContextKey = "pearfy.observability.spanID"
     public let method: HTTPMethod
     public let path: String
     public let query: [String: [String]]

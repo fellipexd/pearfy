@@ -74,6 +74,52 @@ private struct MetricSeries: Hashable, Sendable {
 
 private enum MetricKind: Sendable, Equatable { case counter, gauge, histogram }
 
+public struct MetricHistogramSnapshot: Sendable, Equatable {
+    /// Upper bounds for the cumulative bucket counts. The last bound is positive infinity.
+    public let upperBounds: [Double]
+    public let cumulativeCounts: [UInt64]
+    public let count: UInt64
+    public let sum: Double
+
+    public init(upperBounds: [Double], cumulativeCounts: [UInt64], count: UInt64, sum: Double) {
+        self.upperBounds = upperBounds
+        self.cumulativeCounts = cumulativeCounts
+        self.count = count
+        self.sum = sum
+    }
+}
+
+public struct MetricSeriesSnapshot: Sendable, Equatable {
+    public enum Kind: String, Sendable, Equatable {
+        case counter
+        case gauge
+        case histogram
+    }
+
+    public let name: String
+    public let labels: [String: String]
+    public let kind: Kind
+    public let counterValue: UInt64?
+    public let gaugeValue: Double?
+    public let histogram: MetricHistogramSnapshot?
+
+    public init(
+        name: String,
+        labels: [String: String],
+        kind: Kind,
+        counterValue: UInt64? = nil,
+        gaugeValue: Double? = nil,
+        histogram: MetricHistogramSnapshot? = nil
+    ) {
+        self.name = name
+        self.labels = labels
+        self.kind = kind
+        self.counterValue = counterValue
+        self.gaugeValue = gaugeValue
+        self.histogram = histogram
+    }
+}
+
 private struct HistogramValue: Sendable {
     var count: UInt64 = 0
     var sum = 0.0
@@ -168,6 +214,47 @@ public actor MetricsRegistry {
         return lines.joined(separator: "\n") + (lines.isEmpty ? "" : "\n")
     }
 
+    /// Returns typed metric values for in-process consumers. Callers should
+    /// apply an explicit metric/label allowlist before exposing these values.
+    public func snapshot() -> [MetricSeriesSnapshot] {
+        kinds.keys.sorted {
+            let left = "\($0.name)|\($0.labels.description)"
+            let right = "\($1.name)|\($1.labels.description)"
+            return left < right
+        }.compactMap { series in
+            guard let kind = kinds[series] else { return nil }
+            switch kind {
+            case .counter:
+                return MetricSeriesSnapshot(
+                    name: series.name,
+                    labels: series.labels.values,
+                    kind: .counter,
+                    counterValue: counters[series, default: 0]
+                )
+            case .gauge:
+                return MetricSeriesSnapshot(
+                    name: series.name,
+                    labels: series.labels.values,
+                    kind: .gauge,
+                    gaugeValue: gauges[series, default: 0]
+                )
+            case .histogram:
+                guard let value = histograms[series] else { return nil }
+                return MetricSeriesSnapshot(
+                    name: series.name,
+                    labels: series.labels.values,
+                    kind: .histogram,
+                    histogram: MetricHistogramSnapshot(
+                        upperBounds: Self.defaultBuckets + [.infinity],
+                        cumulativeCounts: value.buckets + [value.count],
+                        count: value.count,
+                        sum: value.sum
+                    )
+                )
+            }
+        }
+    }
+
     private func register(_ name: String, labels: MetricLabels, kind: MetricKind) throws -> MetricSeries {
         guard MetricLabels.isValidIdentifier(name), name.utf8.count <= 128 else {
             throw MetricsError.invalidMetricName(name)
@@ -200,14 +287,18 @@ public actor MetricsRegistry {
 }
 
 public enum HTTPMetricsMiddleware {
-    public static func make(registry: MetricsRegistry) -> HTTPMiddleware {
+    public static func make(
+        registry: MetricsRegistry,
+        telemetry: InProcessTelemetryStore? = nil
+    ) -> HTTPMiddleware {
         { request, next in
             let clock = ContinuousClock()
             let start = clock.now
-            let routeLabels = try? MetricLabels([
-                "method": request.method.description.lowercased(),
-                "route": request.contextValue(HTTPRequest.routeTemplateContextKey) ?? "unmatched"
-            ])
+            let route = request.contextValue(HTTPRequest.routeTemplateContextKey) ?? "unmatched"
+            let method = request.method.description.lowercased()
+            let isDevKitRoute = route == "/__pearfy/devkit" || route.hasPrefix("/__pearfy/devkit/")
+            let traceID = request.contextValue(HTTPRequest.traceIDContextKey)
+            let routeLabels = try? MetricLabels(["method": method, "route": route])
             var gaugeRecorded = false
             if let routeLabels {
                 do {
@@ -215,20 +306,39 @@ public enum HTTPMetricsMiddleware {
                     gaugeRecorded = true
                 } catch {}
             }
-            let response = await next(request)
+            let response: HTTPResponse
+            if telemetry != nil, !isDevKitRoute {
+                let routeContext = route == "unmatched" ? nil : route
+                response = await TelemetryTaskContext.$routeTemplate.withValue(routeContext) {
+                    await TelemetryTaskContext.$traceID.withValue(traceID) {
+                        await next(request)
+                    }
+                }
+            } else {
+                response = await next(request)
+            }
             if gaugeRecorded, let routeLabels {
                 try? await registry.adjustGauge("pearfy_http_requests_in_flight", by: -1, labels: routeLabels)
             }
             let elapsed = start.duration(to: clock.now).components
             let seconds = Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1_000_000_000_000_000_000
             let labels = try? MetricLabels([
-                "method": request.method.description.lowercased(),
-                "route": request.contextValue(HTTPRequest.routeTemplateContextKey) ?? "unmatched",
+                "method": method,
+                "route": route,
                 "status_class": "\(response.status / 100)xx"
             ])
             if let labels {
                 try? await registry.increment("pearfy_http_requests_total", labels: labels)
                 try? await registry.observe("pearfy_http_request_duration_seconds", value: seconds, labels: labels)
+            }
+            if !isDevKitRoute {
+                await telemetry?.recordHTTP(
+                    method: method,
+                    routeTemplate: route,
+                    traceID: traceID,
+                    statusCode: response.status,
+                    durationMilliseconds: seconds * 1_000
+                )
             }
             return response
         }
