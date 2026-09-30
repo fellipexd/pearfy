@@ -1,6 +1,6 @@
 # Pearfy — instruções de engenharia para agentes
 
-Ler antes de editar: `docs/09-ROADMAP-ATUALIZADO.md`, `docs/decisions/01-ARQUITETURA-E-NOMES.md`, `docs/data/`, `docs/distributed/`, `docs/payments/`, `docs/ai/` e `docs/integration/` conforme escopo da tarefa. Fonte factual de implementações: código/testes vigentes, não exemplos de documentação ou protótipo histórico do pacote.
+Arquivo de instruções arquivado com o pacote v3. Para o checkout atual, prevalece `../../AGENTS.md` e o fluxo Skill-first em `../../docs/AI-SKILLS-FIRST.md`: consulte Registry, carregue Skills dos módulos envolvidos e abra somente a referência necessária. Os diretórios de roadmap abaixo não devem ser carregados em bloco. Fonte factual: código/testes vigentes, não exemplos de documentação/protótipo.
 
 ## Regras mandatórias
 - Contratos Swift tipados, legíveis, com mínimo de código duplicado. Reutilizar o que existe.

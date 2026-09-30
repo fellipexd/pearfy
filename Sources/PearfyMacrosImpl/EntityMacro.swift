@@ -17,10 +17,24 @@ public struct EntityMacro: MemberMacro {
             ))
             return []
         }
-        guard let table = firstStringArgument(in: node), !table.isEmpty else {
+        guard let argument = firstArgument(in: node) else {
             context.diagnose(Diagnostic(
                 node: Syntax(node),
-                message: EntityMacroMessage("@Entity requires a literal table name")
+                message: EntityMacroMessage("@Entity requires a table name or Pearfy SchemaEntity model")
+            ))
+            return []
+        }
+        if argument.as(StringLiteralExprSyntax.self) == nil {
+            return [DeclSyntax(stringLiteral: """
+            static var __pearfy_schema: PearfyData.SchemaEntity {
+                \(argument.trimmedDescription)
+            }
+            """)]
+        }
+        guard let table = stringLiteral(argument), !table.isEmpty else {
+            context.diagnose(Diagnostic(
+                node: Syntax(node),
+                message: EntityMacroMessage("@Entity requires a literal table name or a SchemaEntity expression")
             ))
             return []
         }
@@ -230,10 +244,14 @@ public struct EntityMacro: MemberMacro {
         return value
     }
 
-    private static func firstStringArgument(in attribute: AttributeSyntax) -> String? {
+    private static func firstArgument(in attribute: AttributeSyntax) -> ExprSyntax? {
         guard case .argumentList(let arguments) = attribute.arguments,
-              let expression = arguments.first?.expression,
-              let literal = expression.as(StringLiteralExprSyntax.self) else { return nil }
+              let expression = arguments.first?.expression else { return nil }
+        return expression
+    }
+
+    private static func stringLiteral(_ expression: ExprSyntax) -> String? {
+        guard let literal = expression.as(StringLiteralExprSyntax.self) else { return nil }
         var value = ""
         for segment in literal.segments {
             guard case .stringSegment(let string) = segment else { return nil }

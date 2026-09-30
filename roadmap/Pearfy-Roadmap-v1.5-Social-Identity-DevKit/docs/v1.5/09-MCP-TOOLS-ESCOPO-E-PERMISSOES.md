@@ -1,12 +1,14 @@
 # PearfyMCP — leitura, ação estruturada e segurança
 
+> Este documento registra propostas históricas do roadmap v1.5. O checkout atual segue `docs/AI-SKILLS-FIRST.md`: documentação estática é Skill/CLI, não MCP. Nomes abaixo que não constem do Registry/servidor atual não são ferramentas utilizáveis.
+
 ## Resources
 
 `pearfy://project/context`, `/architecture`, `/modules`, `/contracts`, `/database`, `/routes`, `/status`; `pearfy://modules/{id}` sobre **versão instalada**. Dados privados e segredos não entram em resources de documentação.
 
 ## Tools propostas
 
-`pearfy.project.inspect`, `pearfy.modules.list/inspect/plan/install`, `pearfy.code.search`, `pearfy.contracts.inspect/check`, `pearfy.data.inspect/migration.plan`, `pearfy.sdk.generate`, `pearfy.tests.run`, `pearfy.metric.inspect`, `pearfy.guardian.verify`, `pearfy.integration.plan`.
+O servidor atual expõe **somente** ferramentas do module Registry para módulos instalados e explicitamente habilitados no `.pearfy/ai.json`. Hoje isso corresponde à família Populate; project/module catalog, plans, Guardian, Connect SDK, Metric e outras ferramentas citadas nesta proposta não estão expostos.
 
 Cada tool: JSON Schema input/output, capability, escopo, limite tamanho, timeout, cancelamento e log de ação redigido. Falta de tool ≠ comando alucinado; propor alternativa ou marcar bloqueado. Preferir calls de CLI encapsuladas e allowlist a shell arbitrário.
 

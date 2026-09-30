@@ -43,6 +43,47 @@ import Testing
     ])
 }
 
+@Test func postgresSchemaCompilerGeneratesACompleteModelBaselineInDependencyOrder() throws {
+    let owner = SchemaEntity(
+        table: "accounts",
+        columns: [SchemaColumn(name: "id", type: .uuid)],
+        primaryKey: ["id"]
+    )
+    let child = SchemaEntity(
+        table: "account_links",
+        columns: [
+            SchemaColumn(name: "id", type: .postgres("bigint"), defaultValue: .sql("nextval('account_links_id_seq'::regclass)")),
+            SchemaColumn(name: "account_id", type: .uuid)
+        ],
+        primaryKey: ["id"],
+        checks: [SchemaCheckConstraint(name: "account_links_id_positive", expression: "id > 0")],
+        uniqueConstraints: [SchemaUniqueConstraint(name: "account_links_account_key", columns: ["account_id"])],
+        foreignKeys: [SchemaForeignKey(
+            name: "account_links_owner_fk",
+            columns: ["account_id"],
+            referencedTable: "accounts",
+            referencedColumns: ["id"],
+            onDelete: .cascade
+        )]
+    )
+    let schema = try SchemaIR(
+        entities: [child, owner],
+        preTableSQL: ["CREATE EXTENSION IF NOT EXISTS pgcrypto"],
+        postTableSQL: ["CREATE TRIGGER account_links_touch BEFORE UPDATE ON account_links FOR EACH ROW EXECUTE FUNCTION set_updated_at()"]
+    )
+
+    let plan = try PostgresSchemaCompiler().plan(from: nil, to: schema)
+    #expect(plan.upStatements == [
+        "CREATE EXTENSION IF NOT EXISTS pgcrypto",
+        "CREATE TABLE \"account_links\" (\"account_id\" UUID NOT NULL, \"id\" bigint NOT NULL DEFAULT nextval('account_links_id_seq'::regclass), PRIMARY KEY (\"id\"))",
+        "CREATE TABLE \"accounts\" (\"id\" UUID NOT NULL, PRIMARY KEY (\"id\"))",
+        "ALTER TABLE \"account_links\" ADD CONSTRAINT \"account_links_id_positive\" CHECK (id > 0)",
+        "ALTER TABLE \"account_links\" ADD CONSTRAINT \"account_links_account_key\" UNIQUE (\"account_id\")",
+        "ALTER TABLE \"account_links\" ADD CONSTRAINT \"account_links_owner_fk\" FOREIGN KEY (\"account_id\") REFERENCES \"accounts\" (\"id\") ON DELETE CASCADE",
+        "CREATE TRIGGER account_links_touch BEFORE UPDATE ON account_links FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+    ])
+}
+
 @Test func postgresSchemaCompilerAddsNullableColumnsAndRequiresBackfillForRequiredColumns() throws {
     let original = try SchemaIR(entities: [SchemaEntity(
         table: "users",
@@ -117,6 +158,17 @@ import Testing
     #expect(email.nullable)
     #expect(email.unique)
     #expect(balance.type == .decimal(precision: 19, scale: 4))
+
+    let expressionEntity = try #require(schema.entities.first { $0.table == "roadmap_model_expression" })
+    #expect(expressionEntity.primaryKey == ["id"])
+    #expect(expressionEntity.checks == [SchemaCheckConstraint(name: "roadmap_model_expression_positive", expression: "id > 0")])
+    #expect(expressionEntity.foreignKeys == [SchemaForeignKey(
+        name: "roadmap_model_expression_owner_fk",
+        columns: ["owner_id"],
+        referencedTable: "roadmap_accounts",
+        referencedColumns: ["id"],
+        onDelete: .cascade
+    )])
 }
 
 @Entity("roadmap_accounts")
@@ -125,3 +177,21 @@ struct RoadmapAccountSchemaFixture: Sendable {
     @Column(nullable: true, unique: true) var email: String?
     @Column(precision: 19, scale: 4) var balance: Decimal
 }
+
+@Entity(SchemaEntity(
+    table: "roadmap_model_expression",
+    columns: [
+        SchemaColumn(name: "id", type: .postgres("bigint")),
+        SchemaColumn(name: "owner_id", type: .uuid)
+    ],
+    primaryKey: ["id"],
+    checks: [SchemaCheckConstraint(name: "roadmap_model_expression_positive", expression: "id > 0")],
+    foreignKeys: [SchemaForeignKey(
+        name: "roadmap_model_expression_owner_fk",
+        columns: ["owner_id"],
+        referencedTable: "roadmap_accounts",
+        referencedColumns: ["id"],
+        onDelete: .cascade
+    )]
+))
+struct RoadmapSchemaEntityExpressionFixture: Sendable {}

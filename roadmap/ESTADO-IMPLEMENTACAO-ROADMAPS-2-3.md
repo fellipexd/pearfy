@@ -16,8 +16,8 @@ Atualizado em 2026-09-25 contra o código e testes do checkout ativo. As pastas 
 | G7 — multi-instância | Parcial | Migrations foram concorridas em dois clientes PostgreSQL independentes; ainda não há teste de processos separados para invariantes/idempotência de dados nem validação de failover. |
 | G8 — PaymentEngine | Ausente | Sem Money/transferências/reservas/ledger/idempotência/outbox financeiros. |
 | G9 — Guardian | Ausente | Workflow de build/teste e verificações pontuais existem; não há enforcement fail-closed das políticas de SQL, migration, pagamentos ou Connect. |
-| G10 — gRPC/MCP | Parcial | `pearfy mcp` expõe via stdio inspeção read-only do projeto, inventário/consulta de módulos e planos de alteração sem escrita; não há transporte gRPC nem tools de escrita, code search ou Guardian. |
-| G11 — release | Parcial | 101 testes locais passam em Debug/Release com PostgreSQL/Redis, incluindo Connect schemas, Social/PostgreSQL, transaction manager, migration artifacts/plan/locking/drift e MCP read-only; workflow macOS/Linux está configurado, mas sem execução remota e sem revisão/certificação completa de release. |
+| G10 — gRPC/MCP | Parcial | `pearfy mcp` usa stdio e agora anuncia zero tools por padrão; somente ferramentas dinâmicas de módulo instalado e explicitamente concedido são listadas. Catálogo/inspeção estática pertence a Skills/CLI. Não há transporte gRPC, code search, Guardian MCP ou tools de escrita irrestritas. |
+| G11 — release | Parcial | Baseline de 101 testes em Debug/Release passou anteriormente com PostgreSQL/Redis locais. Após este slice, Guardian executou build + 113 testes unit em Debug, status INCOMPLETE sem hosts PostgreSQL/Redis; workflow macOS/Linux ainda sem validação remota nem certificação completa de release. |
 
 ## Roadmap 3 — Connect v1.3 e extensões v1.4
 

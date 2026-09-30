@@ -15,7 +15,12 @@ import Testing
         await probe.end()
     }
     try await scheduler.start()
-    try await Task.sleep(for: .milliseconds(55))
+    let clock = ContinuousClock()
+    let deadline = clock.now.advanced(by: .seconds(1))
+    while (await scheduler.snapshot().first?.executions ?? 0) < 2,
+          clock.now < deadline {
+        try await Task.sleep(for: .milliseconds(5))
+    }
     try await scheduler.stop()
 
     let snapshot = await scheduler.snapshot()

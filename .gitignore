@@ -1,3 +1,6 @@
 .build/
 .swiftpm/
 .DS_Store
+.pearfy/populate/approvals/
+.pearfy/populate/runs/
+/sdk-test/

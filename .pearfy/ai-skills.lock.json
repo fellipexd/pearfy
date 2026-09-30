@@ -1,0 +1,183 @@
+{
+  "assets" : {
+    "agents" : {
+      "files" : {
+        "pearfy-architect.md" : "e91e4820d927d462fc8119cea9a6af69dd2b41d64209a0a6312054fa9b1415cc",
+        "pearfy-builder.md" : "f76a9666138624a1e00d8ab232243359e09a486d4db9f76b76c2701310cdc225",
+        "pearfy-connect.md" : "f46f7e92144935e6ee0ca4dd58459fecaca9bfb067537584d2a6cd0f1580b806",
+        "pearfy-data.md" : "1d4bfd007d5361ed4a1dfd446bcbe0d002235eed27139493cb5b20be0fe2d70e",
+        "pearfy-guardian.md" : "6480023c1eb71742dbd5e04528c42859abacd1ab63edbe9211a9e64f7a562fe0",
+        "pearfy-integrator.md" : "4792a4efbf702926b78ad975ba248515d1cf61b6c12e6220fbf809894da9ebde",
+        "pearfy-performance.md" : "2566ee5fb968d12f1240208f490386eb97c35de3144d81a3f139ad6bc194f22f",
+        "pearfy-qa.md" : "84b70b19a6dfb5337d8aad387de0b60c59018667b3b9bf50d61ebdb4b64bdf8c",
+        "pearfy-security.md" : "169a345dbdce2470d503ee206d726a4e9e8532feda947eb8088adf8ef230199f"
+      },
+      "kind" : "agent",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-ai" : {
+      "files" : {
+        "SKILL.md" : "3ecf33e267b75a8214c6cc53e5a63ceefa89ce3d22468c2735a07e17b25fa981",
+        "references\/runtime-client.md" : "9579b84a549a9aaa1ec1619a5228a7c775b902d887aa84bdbf95805911eb61b0"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-cache" : {
+      "files" : {
+        "SKILL.md" : "5fb7ebfbcabef9fe2afca98bca6f0d5c70ffd94e34b934eed7a2acb59c2f88bb",
+        "references\/cache-contract.md" : "1c95e33c3ccf095fe6e5f3675061911ebcf71dca4ed13d05c886ae6eb84d2d95"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-cloud" : {
+      "files" : {
+        "SKILL.md" : "af92c340b8985b5ffc893b892ce113caf7ce6c070df0a536a7d39bb89c335b4a",
+        "references\/http-client.md" : "4e7725c968243a27a864762dd14eb2c2fac12351e634d7f0ac0d80f819719c76"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-connect" : {
+      "files" : {
+        "SKILL.md" : "2e347ec10c76ca5eb7d01397e52551d5d535a9313f14b7048e4a57717b62c749",
+        "references\/route-contracts.md" : "6d100e937fc966c47b70e320db5e7acae58060ad56fe485063cd1256af548277"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-core" : {
+      "files" : {
+        "SKILL.md" : "0e3f10019660cf9e49316ee12dcf714396e9f30307a6ba32249323b4908e9c51",
+        "references\/dependency-injection.md" : "a5b6d0f473c685a96510c20b96bc9d184c0d93987130e39422fa32a67a7840d8",
+        "references\/http-and-lifecycle.md" : "9e1be520fe84d2443a2a6954cb913335ba0e362e6ee1414c09177bc3a3427187"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-data" : {
+      "files" : {
+        "SKILL.md" : "b22dd229356491ea6202924811f747de0f4bd03d25d6b77d0d6fffaa644b8eff",
+        "references\/schema-and-sql.md" : "a2ed3791f3e63818376c217578200171fb6d8e8a89a20a1a67cbf50f61d87da9"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-devkit" : {
+      "files" : {
+        "SKILL.md" : "73075f1cbca5457d682116382a3baa3cdd077d8f2b0ce9f7f171c8dff312ce16",
+        "references\/dashboard-and-data-sources.md" : "a8307189679e2be7d6aa70dff5aa484417a1036a050b284993525bab4233ea83"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-jobs" : {
+      "files" : {
+        "SKILL.md" : "1ebac0d14056759c716ed0aa662fa9fd78f8e1e1e46997ae86468fc117a5f68c",
+        "references\/scheduler.md" : "b944264dfdaf1b3ff7553ac392b0779aba7837fae90d6caa6e9a6478e4807392"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-messaging" : {
+      "files" : {
+        "SKILL.md" : "fa4a38aa8b1d90adbdea8348c41283bf8810e8071ba387bb47990a4a2e8e23cc",
+        "references\/delivery-contract.md" : "47ff5cb5aea8129f13b5ee063498d38dfdc1cc9fb9d82762fdf381d9173d06ab"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-observability" : {
+      "files" : {
+        "SKILL.md" : "e9dba70734e5b28a864d2958a98781d932da3215b73bfcc8f4e8e69f52ba87c9",
+        "references\/health-and-metrics.md" : "0ece84f1e77ed6a0dfdcf2be76f91ecd116fdaa2cc3f03ec7d6f26fe5d83983c"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-populate" : {
+      "files" : {
+        "SKILL.md" : "0a281834c7ba90fbbd40c2b2ff62aa5cd09f1233c6475559392237d7a3665cc2",
+        "references\/current-boundary.md" : "488c08f5c5424eb949f7ac7b51df85d78c2cda496b697426330c5618b404ab04"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-postgres" : {
+      "files" : {
+        "SKILL.md" : "6e21122eda0c4b09aff7c94ee528afbdb76c4fd118d98b689330b18b30f73187",
+        "references\/connection-and-migrations.md" : "4852001fc1d0b4567b620b5c1fa3a0fbabda456f47aaf88188a09baca66725ab"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-redis" : {
+      "files" : {
+        "SKILL.md" : "07a4227039926ef7a81bbcd8ba78d4e0b78a37dbadc4c3658f719e732eb63d69",
+        "references\/adapters.md" : "f19488b218f9a8bba5588adc2c54c4cd9bfc9eac63d3012610a09693c6531103"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-security" : {
+      "files" : {
+        "SKILL.md" : "e18b5081ed9cdb32898761f71f6e5404c484f8a7a793a86d0af69f0940cb8aa2",
+        "references\/authentication-and-policy.md" : "d6100fe3dce6b1d9c7b13ac38038953d861105adc2a6c3e007beaacc642854b9"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-social" : {
+      "files" : {
+        "SKILL.md" : "cba906fad116178889ff400037ac1edb83c58324c3e0867512c6a5401e77d61b",
+        "references\/graph-and-content.md" : "1b82a7f539a31b3d8559a56238062053b6d65f57baac5628b1023bc37eed8504"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-social-postgres" : {
+      "files" : {
+        "SKILL.md" : "f1cbb61a681a794df9cd012a50a6e4c2dd3a16c9a5fedaf2fbf24dfe5f39db27",
+        "references\/storage-boundary.md" : "b3a718d75b87c8257e282fd5b151eb86ae3add0301e8837d16124d274c276a1d"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-testing" : {
+      "files" : {
+        "SKILL.md" : "651beaa0f42e254e9839b2166dfd7b76368ae05f6dbbeaf844e63f7f0ecfa851",
+        "references\/test-context.md" : "84c95b0e476bbb1f0ec3f239bcea9511940eed671094ce724b0106fed62fb313"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-transactions" : {
+      "files" : {
+        "SKILL.md" : "e9f92f274b03be2e00cda3efc194e38499f5ac60b512bb0ff6ef32cb4d4d03d1",
+        "references\/transaction-boundary.md" : "c2d71424e4972405302721a39627445c7c3660ab9139746082aa05cfeb990be7"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    }
+  },
+  "formatVersion" : 1
+}

@@ -1,0 +1,1 @@
+../../.agents/agents/pearfy-qa.md

@@ -185,6 +185,50 @@ import Testing
     #expect(emptySQLRejected)
 }
 
+@Test func migrationScriptSplitsOnlyTopLevelSemicolons() throws {
+    let script = SQLQuery(unsafeSQL: """
+    -- the comment; is not a delimiter
+    CREATE FUNCTION sample() RETURNS void AS $body$
+    BEGIN
+      RAISE NOTICE 'inside; body';
+      PERFORM 1;
+    END;
+    $body$ LANGUAGE plpgsql;
+    INSERT INTO sample_log(message) VALUES ('text; value');
+    /* outer; comment /* nested; comment */ done */
+    SELECT "semi;colon" FROM sample_log;
+    """)
+
+    let statements = try SQLMigrationScript.statements(in: script)
+    #expect(statements.count == 3)
+    #expect(statements[0].statement.contains("RAISE NOTICE 'inside; body';"))
+    #expect(statements[1].statement == "INSERT INTO sample_log(message) VALUES ('text; value')")
+    #expect(statements[2].statement.contains("SELECT \"semi;colon\" FROM sample_log"))
+
+    #expect(throws: SQLMigrationScriptError.parameterizedScriptHasMultipleStatements) {
+        try SQLMigrationScript.statements(in: SQLQuery(unsafeSQL: "SELECT $1; SELECT $2", parameters: [.integer(1), .integer(2)]))
+    }
+    #expect(throws: SQLMigrationScriptError.unterminatedDollarQuote) {
+        try SQLMigrationScript.statements(in: SQLQuery(unsafeSQL: "DO $body$ BEGIN PERFORM 1;"))
+    }
+}
+
+@Test func migrationRunnerExecutesScriptStatementsThroughMigrationBoundary() async throws {
+    let store = MigrationStore()
+    let database = FakeDatabase(store: store)
+    let runner = SQLMigrationRunner()
+    let migration = SQLMigration(
+        id: "030-create-multiple-objects",
+        up: SQLQuery(unsafeSQL: "CREATE TABLE migration_a (id UUID); CREATE TABLE migration_b (id UUID)")
+    )
+
+    try await runner.apply([migration], to: database)
+    let statements = await store.statements
+    #expect(statements.contains("CREATE TABLE migration_a (id UUID)"))
+    #expect(statements.contains("CREATE TABLE migration_b (id UUID)"))
+    #expect(await store.recordedChecksum(id: migration.id) == migration.checksum)
+}
+
 @Test func migrationRunnerRejectsInvalidAndDuplicateIDsBeforeDatabaseWork() async throws {
     let store = MigrationStore()
     let database = FakeDatabase(store: store)

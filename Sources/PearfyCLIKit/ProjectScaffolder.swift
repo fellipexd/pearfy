@@ -65,6 +65,8 @@ public struct ProjectScaffolder: Sendable {
             .build/
             .swiftpm/
             .DS_Store
+            .pearfy/populate/approvals/
+            .pearfy/populate/runs/
             """.write(to: temporary.appendingPathComponent(".gitignore"), atomically: true, encoding: .utf8)
             try FileManager.default.moveItem(at: temporary, to: output)
             return output
@@ -179,7 +181,7 @@ public struct ProjectScaffolder: Sendable {
         # stop gracefully with Ctrl+C or SIGTERM
         ```
 
-        Optional Pearfy products can be planned/installed with `pearfy modules list`, `pearfy modules plan --add postgres`, and `pearfy add postgres`. Run `pearfy modules doctor` to verify the generated dependency lock and manifest.
+        Optional Pearfy products can be planned/installed with `pearfy modules list`, `pearfy modules plan --add postgres`, and `pearfy add postgres`. `pearfy add populate` installs the optional synthetic PostgreSQL population module; `pearfy add devkit-ui` adds the opt-in local dashboard. If AI tooling is in use, `pearfy ai init --client opencode` installs only Skills for selected modules; later `pearfy add/remove` operations reconcile them without overwriting local edits. Run `pearfy modules doctor` to verify the dependency lock and manifest; use `pearfy ai mcp enable <module>` only for a live-data task that needs its specialized tools.
 
         This scaffold links to the local Pearfy checkout using its current absolute path. If the checkout moves, update the Pearfy path in `Package.swift`. Set `PEARFY_HTTP_PORT` to choose another listening port.
         """

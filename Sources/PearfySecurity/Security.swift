@@ -76,12 +76,20 @@ public struct HMACJWTAuthenticator: Sendable {
     private let issuer: String
     private let audience: String
     private let keys: [String: Data]
+    private let keyForTokenWithoutKeyID: Data?
     private let leeway: TimeInterval
 
-    public init(issuer: String, audience: String, keysByID: [String: Data], leeway: TimeInterval = 0) {
+    public init(
+        issuer: String,
+        audience: String,
+        keysByID: [String: Data],
+        keyIDForTokensWithoutKeyID: String? = nil,
+        leeway: TimeInterval = 0
+    ) {
         self.issuer = issuer
         self.audience = audience
         self.keys = keysByID
+        self.keyForTokenWithoutKeyID = keyIDForTokensWithoutKeyID.flatMap { keysByID[$0] }
         self.leeway = max(0, leeway)
     }
 
@@ -93,10 +101,20 @@ public struct HMACJWTAuthenticator: Sendable {
               let claimsData = decodeBase64URL(String(components[1])),
               let signature = decodeBase64URL(String(components[2])),
               let header = try? JSONDecoder().decode(Header.self, from: headerData),
-              header.alg == "HS256",
-              let keyID = header.kid,
-              let secret = keys[keyID],
-              HMAC<SHA256>.isValidAuthenticationCode(
+              header.alg == "HS256" else {
+            return nil
+        }
+        let secret: Data
+        if let keyID = header.kid {
+            guard let configuredKey = keys[keyID] else { return nil }
+            secret = configuredKey
+        } else {
+            // Legacy tokens without `kid` are accepted only when the caller
+            // explicitly chooses one fallback key; Pearfy never tries all keys.
+            guard let configuredKey = keyForTokenWithoutKeyID else { return nil }
+            secret = configuredKey
+        }
+        guard HMAC<SHA256>.isValidAuthenticationCode(
                 signature,
                 authenticating: Data("\(components[0]).\(components[1])".utf8),
                 using: SymmetricKey(data: secret)

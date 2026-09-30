@@ -20,17 +20,21 @@ O harness é opcional e opera sobre o workspace explicitamente selecionado pelo 
 
 Orquestração no cliente compatível; não pressupor 9 processos LLM simultâneos. Os papéis consultam Skills do módulo/versão efetiva e receitas cross-module; não têm autoridade para atestar gate sem execução real.
 
-## CLI proposto
+## CLI Skills-first atual
 
 ```bash
+pearfy ai init
 pearfy ai init --client opencode
 pearfy ai sync
 pearfy ai inspect
 pearfy ai doctor
-pearfy new my-api --ai
+pearfy ai mcp list
+pearfy ai mcp enable populate
 ```
 
-`AGENTS.md`, `.agents/skills`, `.pearfy/harness` e adapters de cliente gerados sem sobrescrever regras específicas existentes. `ai sync` injeta APENAS skills relevantes à versão resolvida, atualiza links/referências atômicas e identifica conflitos locais.
+O checkout implementa o catálogo/fluxo em `docs/AI-SKILLS-FIRST.md`. `.agents/skills` e `.agents/agents` são canônicos; OpenCode usa links `.opencode/skills` e `.opencode/agents`. `ai sync` seleciona apenas Skills de módulos instalados, verifica versões/hashes e preserva mudanças locais. Project MCP é desabilitado inicialmente e concede tools apenas por módulo instalado/explicitamente habilitado. Configuração global de OpenCode não é editada.
+
+Skills devem ficar compactas; detalhes entram em `references/`. O module registry versionado é factual: APIs ausentes/planned não se tornam implementadas por existir uma recipe ou documento neste roadmap.
 
 ## Lifecycle
 

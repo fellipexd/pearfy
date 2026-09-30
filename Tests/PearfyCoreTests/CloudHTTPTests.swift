@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import PearfyCloud
 import PearfyObservability
 import Testing
@@ -30,7 +33,7 @@ import Testing
 }
 
 @Test func outboundHTTPBoundsConcurrentAndQueuedRequests() async throws {
-    let transport = SlowHTTPTransport()
+    let transport = PausedFirstHTTPTransport()
     let metrics = MetricsRegistry()
     let client = CloudHTTPClient(
         transport: transport,
@@ -41,19 +44,15 @@ import Testing
     )
     let request = URLRequest(url: URL(string: "https://example.test/health")!)
     let first = Task { try await client.send(request) }
-    for _ in 0..<100 {
-        if await transport.startedCount() == 1 { break }
-        try await Task.sleep(for: .milliseconds(1))
-    }
-    #expect(await transport.startedCount() == 1)
+    await transport.waitUntilFirstRequestStarts()
 
     let second = Task { try await client.send(request) }
-    for _ in 0..<100 {
+    for _ in 0..<1_000 {
         if await client.requestCounts().queued == 1 { break }
         try await Task.sleep(for: .milliseconds(1))
     }
     #expect(await client.requestCounts().queued == 1)
-    for _ in 0..<100 {
+    for _ in 0..<1_000 {
         if await metrics.prometheusText().contains("pearfy_outbound_http_queue_depth{client=\"default\"} 1.0") { break }
         try await Task.sleep(for: .milliseconds(1))
     }
@@ -68,6 +67,7 @@ import Testing
         overloadRejected = true
     }
     #expect(overloadRejected)
+    await transport.releaseFirstRequest()
     #expect(try await first.value.statusCode == 200)
     #expect(try await second.value.statusCode == 200)
     let counts = await client.requestCounts()
@@ -81,7 +81,7 @@ import Testing
 }
 
 @Test func cancellingQueuedOutboundRequestReleasesItsQueueSlot() async throws {
-    let transport = SlowHTTPTransport(delay: .milliseconds(80))
+    let transport = PausedFirstHTTPTransport()
     let metrics = MetricsRegistry()
     let client = CloudHTTPClient(
         transport: transport,
@@ -92,12 +92,9 @@ import Testing
     )
     let request = URLRequest(url: URL(string: "https://example.test/health")!)
     let first = Task { try await client.send(request) }
-    for _ in 0..<100 {
-        if await transport.startedCount() == 1 { break }
-        try await Task.sleep(for: .milliseconds(1))
-    }
+    await transport.waitUntilFirstRequestStarts()
     let queued = Task { try await client.send(request) }
-    for _ in 0..<100 {
+    for _ in 0..<1_000 {
         if await client.requestCounts().queued == 1 { break }
         try await Task.sleep(for: .milliseconds(1))
     }
@@ -114,6 +111,7 @@ import Testing
     #expect(await client.requestCounts().queued == 0)
 
     let next = Task { try await client.send(request) }
+    await transport.releaseFirstRequest()
     #expect(try await first.value.statusCode == 200)
     #expect(try await next.value.statusCode == 200)
     let counts = await client.requestCounts()
@@ -124,27 +122,34 @@ import Testing
     #expect(metricsAfter.contains("pearfy_outbound_http_queue_depth{client=\"default\"} 0.0"))
 }
 
-private actor SlowHTTPTransport: CloudHTTPTransport {
-    let delay: Duration
+private actor PausedFirstHTTPTransport: CloudHTTPTransport {
+    private var started = 0
     private var active = 0
     private var maximum = 0
-    private var started = 0
+    private var firstRequestStarted: CheckedContinuation<Void, Never>?
+    private var releaseFirstRequestContinuation: CheckedContinuation<Void, Never>?
 
     var maximumConcurrent: Int { maximum }
 
-    init(delay: Duration = .milliseconds(30)) { self.delay = delay }
+    func waitUntilFirstRequestStarts() async {
+        guard started == 0 else { return }
+        await withCheckedContinuation { firstRequestStarted = $0 }
+    }
 
-    func startedCount() -> Int { started }
+    func releaseFirstRequest() {
+        releaseFirstRequestContinuation?.resume()
+        releaseFirstRequestContinuation = nil
+    }
 
     func send(_ request: URLRequest) async throws -> CloudHTTPResponse {
+        let isFirstRequest = started == 0
         started += 1
         active += 1
         maximum = max(maximum, active)
-        do {
-            try await Task.sleep(for: delay)
-        } catch {
-            active -= 1
-            throw error
+        if isFirstRequest {
+            firstRequestStarted?.resume()
+            firstRequestStarted = nil
+            await withCheckedContinuation { releaseFirstRequestContinuation = $0 }
         }
         active -= 1
         return CloudHTTPResponse(statusCode: 200)

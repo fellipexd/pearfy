@@ -88,6 +88,36 @@ import Testing
     #expect(authenticator.authenticate(unsupportedAlgorithm, now: now) == nil)
 }
 
+@Test func hmacJWTCanValidateLegacyTokensWithoutKeyIDUsingExplicitSingleFallbackKey() throws {
+    let secret = Data("legacy-key-material-for-test".utf8)
+    let authenticator = HMACJWTAuthenticator(
+        issuer: "legacy-issuer",
+        audience: "embersquare-web",
+        keysByID: ["current": secret],
+        keyIDForTokensWithoutKeyID: "current"
+    )
+    let now = Date(timeIntervalSince1970: 1_800_000_000)
+    let token = try makeToken(
+        keyID: nil,
+        key: secret,
+        claims: [
+            "sub": "existing-user-uuid",
+            "iss": "legacy-issuer",
+            "aud": "embersquare-web",
+            "exp": now.timeIntervalSince1970 + 60,
+            "nbf": now.timeIntervalSince1970 - 1,
+            "username": "player"
+        ]
+    )
+
+    #expect(authenticator.authenticate(token, now: now)?.subject == "existing-user-uuid")
+    #expect(HMACJWTAuthenticator(
+        issuer: "legacy-issuer",
+        audience: "embersquare-web",
+        keysByID: ["current": secret]
+    ).authenticate(token, now: now) == nil)
+}
+
 @Test func bearerAndRoleMiddlewareDenyByDefault() async throws {
     let secret = Data("middleware-key-material".utf8)
     let authenticator = HMACJWTAuthenticator(
@@ -129,11 +159,13 @@ import Testing
 
 private func makeToken(
     algorithm: String = "HS256",
-    keyID: String,
+    keyID: String?,
     key: Data,
     claims: [String: Any]
 ) throws -> String {
-    let header = try JSONSerialization.data(withJSONObject: ["alg": algorithm, "kid": keyID, "typ": "JWT"])
+    var headerValues: [String: String] = ["alg": algorithm, "typ": "JWT"]
+    if let keyID { headerValues["kid"] = keyID }
+    let header = try JSONSerialization.data(withJSONObject: headerValues)
     let payload = try JSONSerialization.data(withJSONObject: claims)
     let encodedHeader = base64URL(header)
     let encodedPayload = base64URL(payload)

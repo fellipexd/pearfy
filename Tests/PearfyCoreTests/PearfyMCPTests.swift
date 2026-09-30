@@ -2,7 +2,7 @@ import Foundation
 @testable import PearfyCLIKit
 import Testing
 
-@Test func pearfyMCPNegotiatesListsReadOnlyToolsAndPlansModuleChanges() throws {
+@Test func pearfyMCPDefaultsToNoToolsAndRequiresInstalledModuleGrantForPopulateTools() throws {
     let temporaryRoot = FileManager.default.temporaryDirectory
         .appendingPathComponent("pearfy-mcp-test-\(UUID().uuidString)", isDirectory: true)
     defer { try? FileManager.default.removeItem(at: temporaryRoot) }
@@ -26,55 +26,65 @@ import Testing
     #expect((initialize["serverInfo"] as? [String: Any])?["name"] as? String == "pearfy")
 
     let tools = try #require((responseObject(from: handler, id: 2, method: "tools/list")["result"] as? [String: Any])?["tools"] as? [[String: Any]])
-    #expect(Set(tools.compactMap { $0["name"] as? String }) == [
-        "pearfy.project.inspect",
-        "pearfy.modules.list",
-        "pearfy.modules.inspect",
-        "pearfy.modules.plan"
-    ])
+    #expect(tools.isEmpty)
 
     let manifestURL = projectRoot.appendingPathComponent("Package.swift")
     let lockURL = projectRoot.appendingPathComponent(".pearfy/modules.json")
-    let originalManifest = try Data(contentsOf: manifestURL)
-    let originalLock = try Data(contentsOf: lockURL)
-    let planResponse = try responseObject(
+    let manager = try PearfyModuleManager()
+    let installPlan = try manager.planAdding("populate", to: try manager.doctor(projectRoot: projectRoot))
+    try manager.apply(installPlan, to: projectRoot)
+    #expect(try PearfyAICommand.run(
+        arguments: ["init", "--client", "opencode"],
+        projectRoot: projectRoot,
+        frameworkRoot: frameworkRoot
+    ) == 0)
+
+    let toolWhileDisabled = try responseObject(
         from: handler,
         id: 3,
         method: "tools/call",
         params: [
-            "name": "pearfy.modules.plan",
-            "arguments": ["action": "add", "module": "postgres"]
+            "name": "pearfy.populate.inspect",
+            "arguments": ["environment": "local"]
         ]
     )
-    let planContent = try #require((planResponse["result"] as? [String: Any])?["content"] as? [[String: Any]])
-    let planText = try #require(planContent.first?["text"] as? String)
-    let plan = try #require(try JSONSerialization.jsonObject(with: Data(planText.utf8)) as? [String: Any])
-    #expect(plan["productsToAdd"] as? [String] == ["PearfyData", "PearfyPostgres", "PearfyTransactions"])
-    #expect(plan["readOnly"] as? Bool == true)
-    #expect(try Data(contentsOf: manifestURL) == originalManifest)
-    #expect(try Data(contentsOf: lockURL) == originalLock)
+    #expect((toolWhileDisabled["result"] as? [String: Any])?["isError"] as? Bool == true)
 
-    let resourceResponse = try responseObject(
+    #expect(try PearfyAICommand.run(arguments: ["mcp", "enable", "populate"], projectRoot: projectRoot, frameworkRoot: frameworkRoot) == 0)
+    let enabledTools = try #require((responseObject(from: handler, id: 4, method: "tools/list")["result"] as? [String: Any])?["tools"] as? [[String: Any]])
+    #expect(Set(enabledTools.compactMap { $0["name"] as? String }) == [
+        "pearfy.populate.inspect", "pearfy.populate.profile", "pearfy.populate.plan",
+        "pearfy.populate.preview", "pearfy.populate.status", "pearfy.populate.verify", "pearfy.populate.report"
+    ])
+    #expect(enabledTools.allSatisfy { !($0["name"] as? String ?? "").hasSuffix(".run") })
+    #expect(enabledTools.allSatisfy { tool in
+        let properties = (tool["inputSchema"] as? [String: Any])?["properties"] as? [String: Any] ?? [:]
+        return properties["approvalToken"] == nil
+    })
+
+    let removedWriteTool = try responseObject(
         from: handler,
-        id: 4,
-        method: "resources/read",
-        params: ["uri": "pearfy://modules/postgres"]
+        id: 7,
+        method: "tools/call",
+        params: ["name": "pearfy.populate.run"]
     )
-    let resources = try #require((resourceResponse["result"] as? [String: Any])?["contents"] as? [[String: Any]])
-    let resourceText = try #require(resources.first?["text"] as? String)
-    let module = try #require(try JSONSerialization.jsonObject(with: Data(resourceText.utf8)) as? [String: Any])
-    #expect(module["id"] as? String == "postgres")
+    #expect((removedWriteTool["result"] as? [String: Any])?["isError"] as? Bool == true)
 
-    let invalidPlanResponse = try responseObject(
+    let staticKnowledgeTool = try responseObject(
         from: handler,
         id: 5,
         method: "tools/call",
-        params: [
-            "name": "pearfy.modules.plan",
-            "arguments": ["action": "overwrite", "module": "postgres"]
-        ]
+        params: ["name": "pearfy.modules.list"]
     )
-    #expect((invalidPlanResponse["result"] as? [String: Any])?["isError"] as? Bool == true)
+    #expect((staticKnowledgeTool["result"] as? [String: Any])?["isError"] as? Bool == true)
+
+    let resources = try #require((responseObject(from: handler, id: 8, method: "resources/list")["result"] as? [String: Any])?["resources"] as? [[String: Any]])
+    #expect(resources.map { $0["uri"] as? String } == ["pearfy://populate/schema"])
+
+    #expect(try manager.doctor(projectRoot: projectRoot) == ["http", "populate"])
+    #expect(try Data(contentsOf: manifestURL).range(of: Data("PearfyPopulateCore".utf8)) != nil)
+    #expect(try Data(contentsOf: lockURL).range(of: Data("populate".utf8)) != nil)
+
     #expect(handler.handle(line: #"{"jsonrpc":"2.0","method":"notifications/initialized"}"#) == nil)
 }
 

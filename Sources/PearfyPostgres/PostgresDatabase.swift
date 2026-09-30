@@ -10,19 +10,24 @@ public actor PearfyPostgresDatabase: ApplicationLifecycle, SQLDatabase, PearfyTr
     public nonisolated let name = "Pearfy PostgreSQL"
     public typealias UnitOfWork = any SQLTransaction
 
-    private let client: PostgresClient
+    private let configuration: PostgresClient.Configuration
+    private var client: PostgresClient
     private let logger: Logger
     private let metrics: MetricsRegistry?
+    private let telemetry: InProcessTelemetryStore?
     private var clientTask: Task<Void, Never>?
 
     public init(
         configuration: PostgresClient.Configuration,
         logger: Logger = Logger(label: "Pearfy.Postgres"),
-        metrics: MetricsRegistry? = nil
+        metrics: MetricsRegistry? = nil,
+        telemetry: InProcessTelemetryStore? = nil
     ) {
+        self.configuration = configuration
         client = PostgresClient(configuration: configuration, backgroundLogger: logger)
         self.logger = logger
         self.metrics = metrics
+        self.telemetry = telemetry
     }
 
     /// Starts the pooled client and verifies connectivity before startup succeeds.
@@ -40,6 +45,9 @@ public actor PearfyPostgresDatabase: ApplicationLifecycle, SQLDatabase, PearfyTr
             task.cancel()
             await task.value
             clientTask = nil
+            // PostgresClient.run() is single-use even after cancellation. Replace
+            // the failed client so a later lifecycle start can reconnect.
+            self.client = PostgresClient(configuration: configuration, backgroundLogger: logger)
             throw error
         }
     }
@@ -49,37 +57,44 @@ public actor PearfyPostgresDatabase: ApplicationLifecycle, SQLDatabase, PearfyTr
         clientTask = nil
         task.cancel()
         await task.value
+        client = PostgresClient(configuration: configuration, backgroundLogger: logger)
     }
 
     public func execute(_ query: SQLQuery) async throws {
         try ensureStarted()
         try await perform("execute") {
-            _ = try await client.query(try postgresQuery(query), logger: logger).collect()
+            try await withQueryTelemetry(query, telemetry: telemetry) {
+                _ = try await client.query(try postgresQuery(query), logger: logger).collect()
+            }
         }
     }
 
     public func query<Row: PostgresDecodable & Sendable>(_ query: SQLQuery, as type: Row.Type = Row.self) async throws -> [Row] {
         try ensureStarted()
         return try await perform("query") {
-            let rows = try await client.query(try postgresQuery(query), logger: logger)
-            var decoded: [Row] = []
-            for try await row in rows.decode(type) { decoded.append(row) }
-            return decoded
+            try await withQueryTelemetry(query, telemetry: telemetry) {
+                let rows = try await client.query(try postgresQuery(query), logger: logger)
+                var decoded: [Row] = []
+                for try await row in rows.decode(type) { decoded.append(row) }
+                return decoded
+            }
         }
     }
 
     public func queryStrings(_ query: SQLQuery, column: String) async throws -> [String] {
         try ensureStarted()
         return try await perform("query") {
-            let rows = try await client.query(try postgresQuery(query), logger: logger)
-            var values: [String] = []
-            for try await row in rows {
-                guard let cell = row.first(where: { $0.columnName == column }) else {
-                    throw SQLQueryError.missingColumn(column)
+            try await withQueryTelemetry(query, telemetry: telemetry) {
+                let rows = try await client.query(try postgresQuery(query), logger: logger)
+                var values: [String] = []
+                for try await row in rows {
+                    guard let cell = row.first(where: { $0.columnName == column }) else {
+                        throw SQLQueryError.missingColumn(column)
+                    }
+                    values.append(try cell.decode(String.self))
                 }
-                values.append(try cell.decode(String.self))
+                return values
             }
-            return values
         }
     }
 
@@ -97,7 +112,7 @@ public actor PearfyPostgresDatabase: ApplicationLifecycle, SQLDatabase, PearfyTr
         do {
             return try await perform("transaction") {
                 try await client.withTransaction(logger: logger) { connection in
-                    try await operation(PostgresTransaction(connection: connection, logger: logger))
+                    try await operation(PostgresTransaction(connection: connection, logger: logger, telemetry: telemetry))
                 }
             }
         } catch let error as PostgresTransactionError {
@@ -114,7 +129,7 @@ public actor PearfyPostgresDatabase: ApplicationLifecycle, SQLDatabase, PearfyTr
         do {
             return try await perform("migration") {
                 try await client.withTransaction(logger: logger) { connection in
-                    let transaction = PostgresTransaction(connection: connection, logger: logger)
+                    let transaction = PostgresTransaction(connection: connection, logger: logger, telemetry: telemetry)
                     try await transaction.execute(SQLQuery(
                         unsafeSQL: "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
                         parameters: [.text(key)]
@@ -186,22 +201,64 @@ public actor PearfyPostgresDatabase: ApplicationLifecycle, SQLDatabase, PearfyTr
 private struct PostgresTransaction: SQLTransaction, Sendable {
     let connection: PostgresConnection
     let logger: Logger
+    let telemetry: InProcessTelemetryStore?
 
     func execute(_ query: SQLQuery) async throws {
-        _ = try await connection.query(try postgresQuery(query), logger: logger).collect()
+        try await withQueryTelemetry(query, telemetry: telemetry) {
+            _ = try await connection.query(try postgresQuery(query), logger: logger).collect()
+        }
     }
 
     func queryStrings(_ query: SQLQuery, column: String) async throws -> [String] {
-        let rows = try await connection.query(try postgresQuery(query), logger: logger)
-        var values: [String] = []
-        for try await row in rows {
-            guard let cell = row.first(where: { $0.columnName == column }) else {
-                throw SQLQueryError.missingColumn(column)
+        try await withQueryTelemetry(query, telemetry: telemetry) {
+            let rows = try await connection.query(try postgresQuery(query), logger: logger)
+            var values: [String] = []
+            for try await row in rows {
+                guard let cell = row.first(where: { $0.columnName == column }) else {
+                    throw SQLQueryError.missingColumn(column)
+                }
+                values.append(try cell.decode(String.self))
             }
-            values.append(try cell.decode(String.self))
+            return values
         }
-        return values
     }
+}
+
+private func withQueryTelemetry<Value: Sendable>(
+    _ query: SQLQuery,
+    telemetry: InProcessTelemetryStore?,
+    work: @Sendable () async throws -> Value
+) async throws -> Value {
+    guard let telemetry else { return try await work() }
+    let fingerprint = await telemetry.fingerprint(forSQL: query.statement)
+    let clock = ContinuousClock()
+    let start = clock.now
+    do {
+        let value = try await work()
+        await telemetry.recordDatabaseQuery(
+            fingerprint: fingerprint,
+            routeTemplate: TelemetryTaskContext.routeTemplate,
+            traceID: TelemetryTaskContext.traceID,
+            durationMilliseconds: elapsedMilliseconds(start, clock: clock),
+            failed: false
+        )
+        return value
+    } catch {
+        await telemetry.recordDatabaseQuery(
+            fingerprint: fingerprint,
+            routeTemplate: TelemetryTaskContext.routeTemplate,
+            traceID: TelemetryTaskContext.traceID,
+            durationMilliseconds: elapsedMilliseconds(start, clock: clock),
+            failed: true
+        )
+        throw error
+    }
+}
+
+private func elapsedMilliseconds(_ start: ContinuousClock.Instant, clock: ContinuousClock) -> Double {
+    let duration = start.duration(to: clock.now).components
+    return Double(duration.seconds) * 1_000
+        + Double(duration.attoseconds) / 1_000_000_000_000_000
 }
 
 private enum PostgresDatabaseError: Error, Sendable {

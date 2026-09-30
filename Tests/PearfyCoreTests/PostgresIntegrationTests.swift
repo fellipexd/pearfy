@@ -6,6 +6,38 @@ import PearfyTransactions
 import PostgresNIO
 import Testing
 
+@Test func postgresConnectionSettingsValidateAndConstructAdapterWithoutConnecting() throws {
+    let settings = try PearfyPostgresConnectionSettings(
+        host: "localhost",
+        port: 5434,
+        username: "embersquare_test",
+        password: "test-only",
+        database: "embersquare_test",
+        tls: .disabled,
+        maximumConnections: 7,
+        connectTimeout: .seconds(2)
+    )
+    let database = PearfyPostgresDatabase(settings: settings)
+    #expect(settings.host == "localhost")
+    #expect(settings.port == 5434)
+    #expect(settings.maximumConnections == 7)
+    #expect(settings.connectTimeout == .seconds(2))
+    _ = database
+
+    #expect(throws: PearfyPostgresSettingsError.invalidHost) {
+        try PearfyPostgresConnectionSettings(host: "  ", username: "user")
+    }
+    #expect(throws: PearfyPostgresSettingsError.invalidPort) {
+        try PearfyPostgresConnectionSettings(host: "localhost", port: 0, username: "user")
+    }
+    #expect(throws: PearfyPostgresSettingsError.invalidMaximumConnections) {
+        try PearfyPostgresConnectionSettings(host: "localhost", username: "user", maximumConnections: 0)
+    }
+    #expect(throws: PearfyPostgresSettingsError.invalidConnectTimeout) {
+        try PearfyPostgresConnectionSettings(host: "localhost", username: "user", connectTimeout: .zero)
+    }
+}
+
 @Test func postgresAdapterExecutesParameterizedQueriesAndCleansTransactions() async throws {
     guard let host = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_HOST"] else { return }
     let port = Int(ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_PORT"] ?? "5432") ?? 5432
@@ -33,7 +65,8 @@ import Testing
         configuration.options.connectTimeout = .seconds(5)
 
     let metrics = MetricsRegistry()
-    let database = PearfyPostgresDatabase(configuration: configuration, metrics: metrics)
+    let telemetry = InProcessTelemetryStore()
+    let database = PearfyPostgresDatabase(configuration: configuration, metrics: metrics, telemetry: telemetry)
     try await database.start()
 
     do {
@@ -170,6 +203,9 @@ import Testing
         let databaseMetrics = await metrics.prometheusText()
         #expect(databaseMetrics.contains("pearfy_db_operations_in_flight{operation=\"query\"} 0.0"))
         #expect(databaseMetrics.contains("pearfy_db_operation_duration_seconds_count"))
+        let queryTelemetry = await telemetry.snapshot(windowSeconds: 24 * 60 * 60)
+        #expect(!queryTelemetry.queryMetrics.isEmpty)
+        #expect(queryTelemetry.queryMetrics.allSatisfy { $0.fingerprint.hasPrefix("query-") })
         try await database.execute(SQLQuery(unsafeSQL: "DROP TABLE \(table)"))
         try await database.execute(SQLQuery(unsafeSQL: "DROP TABLE \(schemaTable)"))
     } catch {
@@ -179,6 +215,11 @@ import Testing
         throw error
     }
 
+    try await database.stop()
+    // A failed/closed PostgresClient is single-use; a later application start
+    // receives a fresh client configuration rather than calling run() twice.
+    try await database.start()
+    #expect(try await database.queryStrings(SQLQuery(unsafeSQL: "SELECT 1::TEXT AS healthy"), column: "healthy") == ["1"])
     try await database.stop()
 }
 

@@ -136,6 +136,33 @@ service variables referenced by tests, and returns 0 (PASS), 1 (FAIL), or 2
 (INCOMPLETE). This first slice does not replace CI gates for security, contract
 parity, schema/SQL, or release.
 
+## Pearfy CLI 0.1.0 migration lifecycle
+
+The lifecycle CLI creates/adopts projects and records a versioned
+`pearfy.project.yml` traceability manifest. `pearfy inspect` is read-only;
+`pearfy baseline` reconstructs tracking for an existing Pearfy project;
+`pearfy migrate` analyzes a legacy service and writes the canonical Legacy
+Contract; `pearfy sync` previews drift and requires `--apply` to reconcile it.
+No migration command rewrites application source code.
+
+```bash
+swift run pearfy init my-api --profile standard-api
+swift run pearfy inspect --path ./legacy-service
+swift run pearfy migrate --framework spring-boot
+swift run pearfy migrate status routes
+swift run pearfy migrate verify --route 'GET /health'
+swift run pearfy doctor
+swift run pearfy architecture check
+```
+
+The initial analyzer consumes OpenAPI/Swagger JSON and supported YAML, common
+Spring route annotations, Express-like Node route registrations, and simple
+frameworkless PHP method/URI conditions. It preserves evidence/conflicts and
+confidence; it does not claim full semantic conversion. E2E comparison requires
+`PEARFY_LEGACY_URL` and `PEARFY_URL`; write routes need an explicit sandbox
+opt-in. See `docs/migration/README.md` for analyzer bounds, route states,
+normalization and the current support boundary.
+
 ## PearfyPopulate v1.6
 
 `PearfyPopulateCore`, `PearfyPopulatePostgres`, and the `pearfy populate` command

@@ -2,25 +2,17 @@
 
 ## Registry é fonte factual
 
-Registro `id`, package/product, versão efetiva SwiftPM, dependências, target Swift/OS, capabilities implemented vs planned, config, migrations, contrato/macros, public symbols, CLI workflows, schema docs, gate obrigatório e security/privacy policy. Estados `available`, `installed`, `configured`, `operational` verificáveis; documentação não basta para considerar operacional.
+O checkout implementa Registry schema v2 em `Sources/PearfyCLIKit/module-registry.json`: `id`, nome, version/status, availability, requires/products, capacidades implementadas, Skill+version, references, CLI commands, source contracts, restrictions, validation gates e MCP tool names. `pearfy ai inspect` acrescenta o estado instalado/versão do projeto. `configured` e `operational` são `not-verified` até existir probe/runtime evidence; a ferramenta não deduz saúde operacional de um README.
 
-`pearfy modules inspect social` retorna versão + evidências e paths de fontes. Agentes não podem chamar `@SocialContentType` se não estiver na API dessa branch, mesmo que roadmap a cite.
+`pearfy modules info <id>` retorna o estado de Registry; `pearfy ai inspect --module <id>` acrescenta installation/Skill state. Módulos planejados aparecem com `available:false`, sem product/Skill utilizável, e `pearfy add` os recusa. Agentes não podem chamar APIs somente documentadas no roadmap.
 
 ## Skills
 
-`SKILL.md` curto com frontmatter, quando usar, prerequisites, contratos reais, receita, erros comuns, testes e refs versionadas. Materiais longos ficam em `references/`; scripts versionados em `scripts/` e executados com autorização. Não colocar documento inteiro do framework no prompt; seleção por capability e tarefa.
+As Skills implementadas do checkout ficam sob `.agents/skills/<skill>/SKILL.md`, com frontmatter e `pearfy-skill-version`; references ficam no mesmo diretório. A versão da Skill precisa coincidir com a versão catalogada. O objetivo de 300–800 tokens por corpo é uma meta; regras de segurança não são removidas para encurtar contexto. Scripts são versionados e executados com autorização. Não colocar documento inteiro do framework no prompt; selecionar por module/task.
 
 Exemplo de layout:
 
-```text
-pearfy-skills/
-  pearfy-social/SKILL.md
-  pearfy-identity/SKILL.md
-  pearfy-connect/SKILL.md
-  pearfy-transactions/SKILL.md
-  pearfy-devkit/SKILL.md
-  pearfy-social/references/api-vX.md
-```
+Padrão atual: `AGENTS.md` curto → `pearfy ai inspect` → Skills só dos módulos selecionados → referências da integração aplicável. `pearfy ai sync` compara SHA-256 do último sync e não sobrescreve arquivos editados sem `--force`. `.opencode/skills` é uma camada de symlink, não uma cópia canônica divergente.
 
 ## Integration Recipes
 

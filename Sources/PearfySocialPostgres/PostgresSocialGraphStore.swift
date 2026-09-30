@@ -23,16 +23,31 @@ public struct PostgresSocialGraphStore: SocialGraphStore, Sendable {
     }
 
     public func createActor(_ actor: SocialActor) async throws {
-        try await database.execute(SQLQuery(
-            unsafeSQL: """
-            INSERT INTO \(Self.actors) (id, owner_id, actor_kind, handle, visibility)
-            VALUES ($1, $2, $3, $4, $5)
-            """,
-            parameters: [
-                .uuid(actor.id), .uuid(actor.ownerID), .text(actor.kind.rawValue),
-                .text(actor.handle), .text(actor.visibility.rawValue)
-            ]
-        ))
+        try await withTransaction { transaction in
+            try await transaction.execute(SQLQuery(
+                unsafeSQL: """
+                INSERT INTO \(Self.actors) (id, owner_id, actor_kind, handle, visibility)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (id) DO NOTHING
+                """,
+                parameters: [
+                    .uuid(actor.id), .uuid(actor.ownerID), .text(actor.kind.rawValue),
+                    .text(actor.handle), .text(actor.visibility.rawValue)
+                ]
+            ))
+            let identities = try await transaction.queryStrings(SQLQuery(
+                unsafeSQL: """
+                SELECT CASE WHEN owner_id = $2 AND actor_kind = $3 AND handle = $4 AND visibility = $5
+                    THEN 'true' ELSE 'false' END AS matches
+                FROM \(Self.actors) WHERE id = $1
+                """,
+                parameters: [
+                    .uuid(actor.id), .uuid(actor.ownerID), .text(actor.kind.rawValue),
+                    .text(actor.handle), .text(actor.visibility.rawValue)
+                ]
+            ), column: "matches")
+            guard identities.first == "true" else { throw SocialGraphError.actorIdentityConflict }
+        }
     }
 
     public func follow(ownerID: UUID, sourceActorID: UUID, targetActorID: UUID) async throws -> SocialFollowStatus {
@@ -222,7 +237,7 @@ public struct PostgresSocialGraphStore: SocialGraphStore, Sendable {
 
     private static let migrations: [SQLMigration] = [
         SQLMigration(
-            id: "social-v1-actors",
+            id: "social-v1-01-actors",
             up: SQLQuery(unsafeSQL: """
             CREATE TABLE IF NOT EXISTS \(actors) (
                 id UUID PRIMARY KEY,
@@ -238,7 +253,7 @@ public struct PostgresSocialGraphStore: SocialGraphStore, Sendable {
             down: SQLQuery(unsafeSQL: "DROP TABLE IF EXISTS \(actors)")
         ),
         SQLMigration(
-            id: "social-v1-actor-handle-check",
+            id: "social-v1-02-actor-handle-check",
             up: SQLQuery(unsafeSQL: """
             ALTER TABLE \(actors)
             ADD CONSTRAINT pearfy_social_actors_handle_format CHECK (
@@ -252,7 +267,7 @@ public struct PostgresSocialGraphStore: SocialGraphStore, Sendable {
             """)
         ),
         SQLMigration(
-            id: "social-v1-follows",
+            id: "social-v1-03-follows",
             up: SQLQuery(unsafeSQL: """
             CREATE TABLE IF NOT EXISTS \(follows) (
                 source_actor_id UUID NOT NULL REFERENCES \(actors)(id) ON DELETE CASCADE,
@@ -267,7 +282,7 @@ public struct PostgresSocialGraphStore: SocialGraphStore, Sendable {
             down: SQLQuery(unsafeSQL: "DROP TABLE IF EXISTS \(follows)")
         ),
         SQLMigration(
-            id: "social-v1-blocks",
+            id: "social-v1-04-blocks",
             up: SQLQuery(unsafeSQL: """
             CREATE TABLE IF NOT EXISTS \(blocks) (
                 blocker_actor_id UUID NOT NULL REFERENCES \(actors)(id) ON DELETE CASCADE,

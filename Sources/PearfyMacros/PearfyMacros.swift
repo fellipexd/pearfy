@@ -26,6 +26,9 @@ public macro Repository(
 @attached(member, names: named(__pearfy_schema))
 public macro Entity(_ table: String) = #externalMacro(module: "PearfyMacrosImpl", type: "EntityMacro")
 
+@attached(member, names: named(__pearfy_schema))
+public macro Entity(_ schema: SchemaEntity) = #externalMacro(module: "PearfyMacrosImpl", type: "EntityMacro")
+
 @attached(member, names: named(__pearfy_contractSchemas))
 public macro ContractModel() = #externalMacro(module: "PearfyMacrosImpl", type: "ContractModelMacro")
 

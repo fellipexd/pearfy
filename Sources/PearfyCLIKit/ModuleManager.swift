@@ -1,16 +1,96 @@
 import Foundation
 
+public enum PearfyModuleImplementationStatus: String, Codable, Sendable {
+    case implemented
+    case partial
+    case planned
+}
+
+public struct PearfySDKRelease: Codable, Equatable, Sendable {
+    public let version: String
+    public let name: String
+    public let summary: String
+    public let modules: [String]
+    public let commands: [String]
+}
+
+public struct PearfyModuleProjectStatusSemantics: Codable, Equatable, Sendable {
+    public let installed: String
+    public let configured: String
+    public let operational: String
+}
+
 public struct PearfyModuleManifest: Codable, Equatable, Sendable {
     public let id: String
+    public let name: String
+    /// `workspace` means the product has no separately released SwiftPM version.
+    public let version: String
+    public let implementationStatus: PearfyModuleImplementationStatus
+    public let available: Bool
     public let summary: String
     public let requirements: [String]
     public let products: [String]
+    public let capabilities: [String]
+    public let configurationChecks: [String]
+    public let skillID: String?
+    public let skillVersion: String?
+    public let references: [String]
+    public let cliCommands: [String]
+    public let contracts: [String]
+    public let restrictions: [String]
+    public let validation: [String]
+    public let mcpTools: [String]
+    public let mcpResources: [String]
+    public let mcpResourceTemplates: [String]
+    public let introducedInSDK: String?
 
     enum CodingKeys: String, CodingKey {
         case id
+        case name
+        case version
+        case implementationStatus
+        case available
         case summary
         case requirements = "requires"
         case products
+        case capabilities
+        case configurationChecks
+        case skillID = "skill"
+        case skillVersion
+        case references
+        case cliCommands
+        case contracts
+        case restrictions
+        case validation
+        case mcpTools
+        case mcpResources
+        case mcpResourceTemplates
+        case introducedInSDK
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(String.self, forKey: .id)
+        name = try values.decodeIfPresent(String.self, forKey: .name) ?? id
+        version = try values.decodeIfPresent(String.self, forKey: .version) ?? "workspace"
+        implementationStatus = try values.decodeIfPresent(PearfyModuleImplementationStatus.self, forKey: .implementationStatus) ?? .partial
+        available = try values.decodeIfPresent(Bool.self, forKey: .available) ?? true
+        summary = try values.decode(String.self, forKey: .summary)
+        requirements = try values.decodeIfPresent([String].self, forKey: .requirements) ?? []
+        products = try values.decodeIfPresent([String].self, forKey: .products) ?? []
+        capabilities = try values.decodeIfPresent([String].self, forKey: .capabilities) ?? []
+        configurationChecks = try values.decodeIfPresent([String].self, forKey: .configurationChecks) ?? []
+        skillID = try values.decodeIfPresent(String.self, forKey: .skillID)
+        skillVersion = try values.decodeIfPresent(String.self, forKey: .skillVersion)
+        references = try values.decodeIfPresent([String].self, forKey: .references) ?? []
+        cliCommands = try values.decodeIfPresent([String].self, forKey: .cliCommands) ?? []
+        contracts = try values.decodeIfPresent([String].self, forKey: .contracts) ?? []
+        restrictions = try values.decodeIfPresent([String].self, forKey: .restrictions) ?? []
+        validation = try values.decodeIfPresent([String].self, forKey: .validation) ?? []
+        mcpTools = try values.decodeIfPresent([String].self, forKey: .mcpTools) ?? []
+        mcpResources = try values.decodeIfPresent([String].self, forKey: .mcpResources) ?? []
+        mcpResourceTemplates = try values.decodeIfPresent([String].self, forKey: .mcpResourceTemplates) ?? []
+        introducedInSDK = try values.decodeIfPresent(String.self, forKey: .introducedInSDK)
     }
 }
 
@@ -26,11 +106,13 @@ public struct PearfyModulePlan: Equatable, Sendable {
 public enum PearfyModuleManagerError: Error, Sendable, Equatable, CustomStringConvertible {
     case invalidRegistry(String)
     case unknownModule(String)
+    case moduleUnavailable(String)
     case moduleNotSelected(String)
     case requiredModule(String, by: [String])
     case requiredBaseModule(String)
     case managedProjectRequired
     case invalidLockfile
+    case moduleVersionDrift(String, locked: String, current: String)
     case stalePlan
     case packageDrift
 
@@ -38,12 +120,15 @@ public enum PearfyModuleManagerError: Error, Sendable, Equatable, CustomStringCo
         switch self {
         case .invalidRegistry(let detail): "PEARFY_MODULE_001: invalid module registry: \(detail)"
         case .unknownModule(let id): "PEARFY_MODULE_002: module '\(id)' is not available in this checkout"
+        case .moduleUnavailable(let id): "PEARFY_MODULE_010: module '\(id)' is documented but not implemented/available in this checkout"
         case .moduleNotSelected(let id): "PEARFY_MODULE_003: module '\(id)' is not selected in this project"
         case .requiredModule(let id, let dependents):
             "PEARFY_MODULE_004: module '\(id)' is required by \(dependents.joined(separator: ", "))"
         case .requiredBaseModule(let id): "PEARFY_MODULE_005: base module '\(id)' cannot be removed"
         case .managedProjectRequired: "PEARFY_MODULE_006: project has no Pearfy module-manager markers; no files were changed"
         case .invalidLockfile: "PEARFY_MODULE_007: .pearfy/modules.json is missing or invalid"
+        case .moduleVersionDrift(let id, let locked, let current):
+            "PEARFY_MODULE_011: module '\(id)' version drift (lock: \(locked), registry: \(current)); review the SDK/module update before changing dependencies"
         case .stalePlan: "PEARFY_MODULE_008: project modules changed after this plan was created"
         case .packageDrift: "PEARFY_MODULE_009: Package.swift does not match the Pearfy module lock"
         }
@@ -55,15 +140,20 @@ public enum PearfyModuleManagerError: Error, Sendable, Equatable, CustomStringCo
 public struct PearfyModuleManager: Sendable {
     private struct RegistryFile: Decodable {
         let schemaVersion: Int
+        let sdkReleases: [PearfySDKRelease]?
+        let projectStatusSemantics: PearfyModuleProjectStatusSemantics?
         let modules: [PearfyModuleManifest]
     }
 
     private struct Lockfile: Codable {
         let formatVersion: Int
         let modules: [String]
+        let moduleVersions: [String: String]?
     }
 
     private let modulesByID: [String: PearfyModuleManifest]
+    private let releases: [PearfySDKRelease]
+    private let statusSemantics: PearfyModuleProjectStatusSemantics
     private let beginMarker = "// pearfy-modules:begin"
     private let endMarker = "// pearfy-modules:end"
 
@@ -83,7 +173,7 @@ public struct PearfyModuleManager: Sendable {
         } catch {
             throw PearfyModuleManagerError.invalidRegistry(String(describing: error))
         }
-        guard registry.schemaVersion == 1 else {
+        guard registry.schemaVersion == 1 || registry.schemaVersion == 2 else {
             throw PearfyModuleManagerError.invalidRegistry("unsupported schemaVersion \(registry.schemaVersion)")
         }
         var modules: [String: PearfyModuleManifest] = [:]
@@ -91,20 +181,56 @@ public struct PearfyModuleManager: Sendable {
             guard Self.isValidModuleID(module.id),
                   modules[module.id] == nil,
                   Set(module.products).count == module.products.count,
-                  module.products.allSatisfy(Self.isValidProductName) else {
+                  Set(module.mcpTools).count == module.mcpTools.count,
+                  Set(module.mcpResources).count == module.mcpResources.count,
+                  Set(module.mcpResourceTemplates).count == module.mcpResourceTemplates.count,
+                  module.products.allSatisfy(Self.isValidProductName),
+                  !module.available || (!module.products.isEmpty && module.implementationStatus != .planned),
+                  module.available || (module.implementationStatus == .planned && module.mcpTools.isEmpty && module.mcpResources.isEmpty && module.mcpResourceTemplates.isEmpty),
+                  registry.schemaVersion != 2 || !module.available || (module.skillID != nil && module.skillVersion != nil) else {
                 throw PearfyModuleManagerError.invalidRegistry("invalid or duplicate module '\(module.id)'")
             }
             modules[module.id] = module
+        }
+        let mcpToolNames = registry.modules.flatMap(\.mcpTools)
+        guard Set(mcpToolNames).count == mcpToolNames.count,
+              mcpToolNames.allSatisfy(Self.isValidMCPToolName) else {
+            throw PearfyModuleManagerError.invalidRegistry("invalid or duplicate MCP tool name")
         }
         guard modules["http"] != nil else {
             throw PearfyModuleManagerError.invalidRegistry("required base module 'http' is missing")
         }
         modulesByID = modules
-        for id in modules.keys.sorted() { _ = try resolvedModules(for: [id]) }
+        releases = registry.sdkReleases ?? []
+        statusSemantics = registry.projectStatusSemantics ?? PearfyModuleProjectStatusSemantics(
+            installed: "not recorded by this legacy registry",
+            configured: "not verified",
+            operational: "not verified"
+        )
+        if registry.schemaVersion == 2, registry.projectStatusSemantics == nil {
+            throw PearfyModuleManagerError.invalidRegistry("schemaVersion 2 requires projectStatusSemantics")
+        }
+        guard Set(releases.map(\.version)).count == releases.count,
+              releases.allSatisfy({ !$0.version.isEmpty && $0.modules.allSatisfy { modules[$0]?.available == true } }) else {
+            throw PearfyModuleManagerError.invalidRegistry("invalid SDK release catalog")
+        }
+        for id in modules.values.filter(\.available).map(\.id).sorted() { _ = try resolvedModules(for: [id]) }
     }
 
     public func availableModules() -> [PearfyModuleManifest] {
+        modulesByID.values.filter(\.available).sorted { $0.id < $1.id }
+    }
+
+    public func catalogModules() -> [PearfyModuleManifest] {
         modulesByID.values.sorted { $0.id < $1.id }
+    }
+
+    public func sdkReleases() -> [PearfySDKRelease] {
+        releases
+    }
+
+    public func projectStatusSemantics() -> PearfyModuleProjectStatusSemantics {
+        statusSemantics
     }
 
     public func module(named id: String) throws -> PearfyModuleManifest {
@@ -112,8 +238,46 @@ public struct PearfyModuleManager: Sendable {
         return module
     }
 
+    /// Explicit module selections from the lock file, after manifest/version validation.
+    public func selectedModuleIDs(projectRoot: URL) throws -> [String] {
+        try doctor(projectRoot: projectRoot)
+    }
+
+    /// Explicit selections plus their available transitive dependencies.
+    public func resolvedModuleIDs(projectRoot: URL) throws -> [String] {
+        let selected = try doctor(projectRoot: projectRoot)
+        return try resolvedModules(for: Set(selected)).sorted()
+    }
+
+    public func resolvedModuleIDs(from selections: [String]) throws -> [String] {
+        try resolvedModules(for: Set(selections)).sorted()
+    }
+
+    public func projectModuleVersions(projectRoot: URL) throws -> [String: String]? {
+        let url = projectRoot.appendingPathComponent(".pearfy/modules.json")
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let lockfile: Lockfile
+        do {
+            lockfile = try JSONDecoder().decode(Lockfile.self, from: Data(contentsOf: url))
+        } catch {
+            throw PearfyModuleManagerError.invalidLockfile
+        }
+        guard lockfile.formatVersion == 1 || lockfile.formatVersion == 2 else {
+            throw PearfyModuleManagerError.invalidLockfile
+        }
+        return lockfile.moduleVersions
+    }
+
+    /// Upgrades a legacy version-1 lock without changing its module selection or manifest.
+    public func upgradeLockfile(projectRoot: URL) throws {
+        let selected = try doctor(projectRoot: projectRoot)
+        let data = try lockfileData(modules: selected)
+        try data.write(to: projectRoot.appendingPathComponent(".pearfy/modules.json"), options: .atomic)
+    }
+
     public func planAdding(_ id: String, to selectedModules: [String]) throws -> PearfyModulePlan {
-        _ = try module(named: id)
+        let requested = try module(named: id)
+        guard requested.available else { throw PearfyModuleManagerError.moduleUnavailable(id) }
         let current = Set(selectedModules)
         let planned = current.union([id])
         let currentResolved = try resolvedModules(for: current)
@@ -131,7 +295,8 @@ public struct PearfyModuleManager: Sendable {
     }
 
     public func planRemoving(_ id: String, from selectedModules: [String]) throws -> PearfyModulePlan {
-        _ = try module(named: id)
+        let requested = try module(named: id)
+        guard requested.available else { throw PearfyModuleManagerError.moduleUnavailable(id) }
         guard id != "http" else { throw PearfyModuleManagerError.requiredBaseModule(id) }
         var planned = Set(selectedModules)
         let currentResolved = try resolvedModules(for: planned)
@@ -180,7 +345,7 @@ public struct PearfyModuleManager: Sendable {
         } catch {
             throw PearfyModuleManagerError.invalidLockfile
         }
-        guard lockfile.formatVersion == 1 else { throw PearfyModuleManagerError.invalidLockfile }
+        guard lockfile.formatVersion == 1 || lockfile.formatVersion == 2 else { throw PearfyModuleManagerError.invalidLockfile }
         guard lockfile.modules.contains("http"), Set(lockfile.modules).count == lockfile.modules.count else {
             throw PearfyModuleManagerError.invalidLockfile
         }
@@ -189,6 +354,7 @@ public struct PearfyModuleManager: Sendable {
         let oldManifestData = try Data(contentsOf: packageURL)
         let oldManifest = String(decoding: oldManifestData, as: UTF8.self)
         let currentResolved = try resolvedModules(for: Set(lockfile.modules))
+        try validateVersionLock(lockfile, resolvedModules: currentResolved)
         guard try existingProductBlock(in: oldManifest) == productBlock(modules: currentResolved) else {
             throw PearfyModuleManagerError.packageDrift
         }
@@ -218,11 +384,12 @@ public struct PearfyModuleManager: Sendable {
         } catch {
             throw PearfyModuleManagerError.invalidLockfile
         }
-        guard lockfile.formatVersion == 1 else { throw PearfyModuleManagerError.invalidLockfile }
+        guard lockfile.formatVersion == 1 || lockfile.formatVersion == 2 else { throw PearfyModuleManagerError.invalidLockfile }
         guard lockfile.modules.contains("http"), Set(lockfile.modules).count == lockfile.modules.count else {
             throw PearfyModuleManagerError.invalidLockfile
         }
         let resolved = try resolvedModules(for: Set(lockfile.modules))
+        try validateVersionLock(lockfile, resolvedModules: resolved)
         let manifest = String(decoding: try Data(contentsOf: packageURL), as: UTF8.self)
         let expected = try productBlock(modules: resolved)
         let actual = try existingProductBlock(in: manifest)
@@ -253,8 +420,29 @@ public struct PearfyModuleManager: Sendable {
     private func lockfileData(modules: [String]) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let value = Lockfile(formatVersion: 1, modules: modules.sorted())
+        let resolved = try resolvedModules(for: Set(modules))
+        let versions = Dictionary(uniqueKeysWithValues: resolved.sorted().compactMap { id in
+            modulesByID[id].map { (id, $0.version) }
+        })
+        let value = Lockfile(formatVersion: 2, modules: modules.sorted(), moduleVersions: versions)
         return try encoder.encode(value) + Data([0x0a])
+    }
+
+    private func validateVersionLock(_ lockfile: Lockfile, resolvedModules: Set<String>) throws {
+        guard lockfile.formatVersion == 2 else { return }
+        guard let lockedVersions = lockfile.moduleVersions,
+              Set(lockedVersions.keys) == resolvedModules else {
+            throw PearfyModuleManagerError.invalidLockfile
+        }
+        for id in resolvedModules.sorted() {
+            guard let current = modulesByID[id]?.version,
+                  let locked = lockedVersions[id] else {
+                throw PearfyModuleManagerError.invalidLockfile
+            }
+            guard locked == current else {
+                throw PearfyModuleManagerError.moduleVersionDrift(id, locked: locked, current: current)
+            }
+        }
     }
 
     private func resolvedModules(for roots: Set<String>) throws -> Set<String> {
@@ -263,6 +451,7 @@ public struct PearfyModuleManager: Sendable {
 
         func visit(_ id: String) throws {
             guard let module = modulesByID[id] else { throw PearfyModuleManagerError.unknownModule(id) }
+            guard module.available else { throw PearfyModuleManagerError.moduleUnavailable(id) }
             if resolved.contains(id) { return }
             if active.contains(id) {
                 let cycle = (active + [id]).joined(separator: " -> ")
@@ -325,6 +514,12 @@ public struct PearfyModuleManager: Sendable {
         guard let first = product.utf8.first, (65...90).contains(first) || (97...122).contains(first) else { return false }
         return product.utf8.allSatisfy { (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) }
     }
+
+    private static func isValidMCPToolName(_ name: String) -> Bool {
+        name.hasPrefix("pearfy.") && name.utf8.count <= 128 && name.utf8.allSatisfy {
+            (97...122).contains($0) || (48...57).contains($0) || $0 == 45 || $0 == 46 || $0 == 95
+        }
+    }
 }
 
 /// CLI façade for module inventory and safe edits to generated scaffold manifests.
@@ -334,15 +529,24 @@ public enum PearfyModuleCommand {
         guard let command = arguments.first else { throw PearfyModuleCommandError.usage }
         switch command {
         case "list":
-            for module in manager.availableModules() {
-                print("\(module.id)\t\(module.summary)")
+            for module in manager.catalogModules() {
+                let availability = module.available ? "available" : "planned"
+                print("\(module.id)\t\(availability)\t\(module.implementationStatus.rawValue)\t\(module.summary)")
             }
         case "info":
             guard arguments.count == 2 else { throw PearfyModuleCommandError.usage }
             let module = try manager.module(named: arguments[1])
-            print("\(module.id): \(module.summary)")
+            print("\(module.id) [\(module.implementationStatus.rawValue)\(module.available ? ", installable" : ", planned only")] — \(module.name)")
+            print("Version: \(module.version)")
+            print("Summary: \(module.summary)")
+            print("Availability: \(module.available ? "installable" : "planned only")")
             print("Requires: \(module.requirements.isEmpty ? "none" : module.requirements.joined(separator: ", "))")
             print("Products: \(module.products.joined(separator: ", "))")
+            print("Skill: \(module.skillID ?? "not available")\(module.skillVersion.map { " @ \($0)" } ?? "")")
+            print("Capabilities: \(module.capabilities.isEmpty ? "none implemented" : module.capabilities.joined(separator: "; "))")
+            print("Configuration checks: \(module.configurationChecks.isEmpty ? "none declared" : module.configurationChecks.joined(separator: "; "))")
+            print("Validation: \(module.validation.isEmpty ? "not available" : module.validation.joined(separator: "; "))")
+            print("Runtime configured/operational: not evaluated by registry inspection")
         case "doctor":
             let modules = try manager.doctor(projectRoot: projectRoot)
             print("Module configuration OK: \(modules.sorted().joined(separator: ", "))")

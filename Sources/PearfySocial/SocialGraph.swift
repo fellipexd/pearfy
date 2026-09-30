@@ -86,6 +86,7 @@ public enum SocialGraphError: Error, Sendable, Equatable, CustomStringConvertibl
     case selfRelationship
     case actorNotFoundOrNotVisible
     case actorOwnershipRequired
+    case actorIdentityConflict
     case blocked
     case invalidPersistedStatus(String)
 
@@ -95,6 +96,7 @@ public enum SocialGraphError: Error, Sendable, Equatable, CustomStringConvertibl
         case .selfRelationship: "PEARFY_SOCIAL_002: actor cannot follow or block itself"
         case .actorNotFoundOrNotVisible: "PEARFY_SOCIAL_003: actor was not found or is not visible"
         case .actorOwnershipRequired: "PEARFY_SOCIAL_004: action requires ownership of the source actor"
+        case .actorIdentityConflict: "PEARFY_SOCIAL_013: persisted actor identity conflicts with the supplied owner or profile"
         case .blocked: "PEARFY_SOCIAL_005: relationship is blocked"
         case .invalidPersistedStatus(let status): "PEARFY_SOCIAL_006: invalid persisted follow status '\(status)'"
         }
@@ -103,6 +105,9 @@ public enum SocialGraphError: Error, Sendable, Equatable, CustomStringConvertibl
 
 public protocol SocialGraphStore: Sendable {
     func installSchema() async throws
+    /// Creates the actor or treats an identical persisted identity as an
+    /// idempotent replay; reusing the ID with different ownership/profile data
+    /// must fail with `actorIdentityConflict`.
     func createActor(_ actor: SocialActor) async throws
     func follow(ownerID: UUID, sourceActorID: UUID, targetActorID: UUID) async throws -> SocialFollowStatus
     func approveFollow(ownerID: UUID, sourceActorID: UUID, targetActorID: UUID) async throws

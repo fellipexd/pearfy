@@ -219,7 +219,17 @@ public struct SQLQuery: Sendable {
 
 public protocol SQLTransaction: Sendable {
     func execute(_ query: SQLQuery) async throws
+    /// Executes trusted migration script text that can contain multiple statements.
+    func executeMigrationScript(_ query: SQLQuery) async throws
     func queryStrings(_ query: SQLQuery, column: String) async throws -> [String]
+}
+
+public extension SQLTransaction {
+    func executeMigrationScript(_ query: SQLQuery) async throws {
+        for statement in try SQLMigrationScript.statements(in: query) {
+            try await execute(statement)
+        }
+    }
 }
 
 public protocol SQLDatabase: Sendable {
@@ -364,7 +374,7 @@ public struct SQLMigrationRunner: Sendable {
                     return
                 }
 
-                try await transaction.execute(migration.up)
+                try await transaction.executeMigrationScript(migration.up)
                 try await transaction.execute(SQLQuery(
                     unsafeSQL: "INSERT INTO \(journal) (id, checksum) VALUES ($1, $2)",
                     parameters: [.text(migration.id), .text(migration.checksum)]
@@ -400,7 +410,7 @@ public struct SQLMigrationRunner: Sendable {
                     parameters: [.text(migration.id), .text(migration.checksum)]
                 ))
             }
-            try await transaction.execute(down)
+            try await transaction.executeMigrationScript(down)
             try await transaction.execute(SQLQuery(
                 unsafeSQL: "DELETE FROM \(journal) WHERE id = $1",
                 parameters: [.text(migration.id)]
