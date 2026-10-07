@@ -212,3 +212,8 @@ when finished. See `docs/AI-SKILLS-FIRST.md` and
 Comparisons with Spring Boot may appear only in `.md` documentation. New source,
 test, script, manifest, workflow, and symbol names must use only Pearfy and neutral
 technical terminology.
+
+## License
+
+Pearfy is licensed under the Apache License 2.0.
+See the [LICENSE](LICENSE) file for details.
