@@ -506,8 +506,13 @@ import Testing
 @Test func processResourceSamplerReportsCurrentResidentMemoryAndCPUInterval() async throws {
     let sampler = DevKitProcessResourceSampler()
     await sampler.start()
-    try await Task.sleep(for: .milliseconds(1_100))
-    let sample = try #require(await sampler.latestSample())
+    let clock = ContinuousClock()
+    let deadline = clock.now.advanced(by: .seconds(3))
+    var sample = try #require(await sampler.latestSample())
+    while sample.cpuPercent == nil, clock.now < deadline {
+        try await Task.sleep(for: .milliseconds(50))
+        sample = try #require(await sampler.latestSample())
+    }
     #expect(sample.residentMemoryBytes.map { $0 > 0 } == true)
     #expect(sample.cpuPercent.map { $0.isFinite && $0 >= 0 } == true)
 }

@@ -19,7 +19,7 @@ import Testing
     #expect(report.gates.first(where: { $0.name == "integration-environment" })?.detail.contains("PEARFY_TEST_POSTGRES_HOST") == true)
     #expect(executor.arguments == [
         ["build", "-j", "2", "-Xswiftc", "-disable-batch-mode"],
-        ["bash", "scripts/test-unit.sh", "-j", "2", "-Xswiftc", "-disable-batch-mode"]
+        ["bash", "scripts/test-unit.sh", "-j", "2", "--no-parallel", "-Xswiftc", "-disable-batch-mode"]
     ])
 }
 
@@ -36,7 +36,7 @@ import Testing
     #expect(report.status == .pass)
     #expect(executor.arguments == [
         ["build", "-j", "1", "-Xswiftc", "-disable-batch-mode"],
-        ["bash", "scripts/test-unit.sh", "-j", "3", "-Xswiftc", "-disable-batch-mode"]
+        ["bash", "scripts/test-unit.sh", "-j", "3", "--no-parallel", "-Xswiftc", "-disable-batch-mode"]
     ])
 }
 

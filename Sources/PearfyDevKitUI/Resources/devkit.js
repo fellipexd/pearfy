@@ -12,6 +12,7 @@
   let showEmptyRoutes = false;
   let traceNodes = new Map();
   let refreshInProgress = false;
+  let gameStateOffset = 0;
 
   function loadToken() {
     try { return localStorage.getItem(tokenStorageKey) || ''; } catch { return ''; }
@@ -34,9 +35,10 @@
     } catch {}
   }
 
-  async function request(endpoint) {
+  async function request(endpoint, parameters = {}) {
     const query = new URLSearchParams({ window: $('period').value });
     if ($('instance').value) query.set('instance', $('instance').value);
+    Object.entries(parameters).forEach(([key, value]) => query.set(key, String(value)));
     const response = await fetch(`${root}/${endpoint}?${query}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       cache: 'no-store',
@@ -51,6 +53,47 @@
     }
     if (!response.ok) throw new Error(`Fonte indisponível (${response.status}).`);
     return response.json();
+  }
+
+  function paintGameStates(page) {
+    const target = $('game-states-content');
+    const summary = $('game-states-summary');
+    const more = $('game-states-more');
+    target.replaceChildren();
+    summary.textContent = `${fmt(page.total)} estados atuais · página ${fmt(page.offset + 1)}–${fmt(page.offset + page.states.length)} · payload limitado a 1 KiB por estado`;
+    more.hidden = page.offset + page.states.length >= page.total;
+    more.onclick = () => { gameStateOffset += page.limit; refresh(); };
+    if (!page.states.length) {
+      target.className = 'empty';
+      target.textContent = page.total ? 'Fim da lista.' : 'Nenhum estado do game server foi publicado.';
+      return;
+    }
+    target.className = 'table-scroll';
+    const table = document.createElement('table');
+    const head = document.createElement('thead');
+    const header = document.createElement('tr');
+    ['ESTADO', 'REVISÃO', 'ATUALIZADO', 'BYTES', 'PREVIEW'].forEach((label) => {
+      const th = document.createElement('th'); th.textContent = label; th.scope = 'col'; header.append(th);
+    });
+    head.append(header);
+    const body = document.createElement('tbody');
+    page.states.forEach((state) => {
+      const row = document.createElement('tr');
+      cell(row, state.id);
+      cell(row, String(state.revision));
+      cell(row, new Date(state.updatedAt).toLocaleString('pt-BR'));
+      cell(row, `${fmt(state.payloadBytes)}${state.truncated ? '+' : ''}`);
+      let preview = '';
+      try {
+        const bytes = Uint8Array.from(atob(state.payloadBase64Preview), (character) => character.charCodeAt(0));
+        const raw = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        try { preview = JSON.stringify(JSON.parse(raw), null, 2); } catch { preview = raw; }
+      } catch { preview = 'payload binário'; }
+      if (state.truncated) preview += '\n… preview truncado';
+      cell(row, preview, 'state-preview');
+      body.append(row);
+    });
+    table.append(head, body); target.append(table);
   }
 
   function cell(row, value, className = '') {
@@ -326,8 +369,9 @@
     refreshInProgress = true;
     try {
       message.textContent = '';
-      const [overviewData, routeList, traces, errors, logs, instances, queries] = await Promise.all([
-        request('overview'), request('routes'), request('traces'), request('errors'), request('logs'), request('instances'), request('queries')
+      const [overviewData, routeList, traces, errors, logs, instances, queries, gameStates] = await Promise.all([
+        request('overview'), request('routes'), request('traces'), request('errors'), request('logs'), request('instances'), request('queries'),
+        request('game-states', { offset: gameStateOffset, limit: 100 })
       ]);
       if (saveTokenAfterSuccess) persistToken(token);
       routes = routeList;
@@ -341,6 +385,7 @@
       $('token-state').textContent = loadToken() === token ? 'Bearer salvo neste navegador' : 'Bearer ativo nesta sessão';
       paintTraces(traces);
       paintErrors(errors);
+      paintGameStates(gameStates);
       paintRecords('logs-content', logs, (log) => record(
         `${log.severity} · ${new Date(log.timestamp).toLocaleTimeString('pt-BR')}`,
         `${log.routeTemplate || ''} ${log.message}${log.traceID ? ` · trace ${log.traceID}` : ''}`

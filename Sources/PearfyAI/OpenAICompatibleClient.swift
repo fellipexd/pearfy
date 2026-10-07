@@ -58,6 +58,8 @@ public enum AIProviderError: Error, Sendable, Equatable, CustomStringConvertible
     case invalidRequest(String)
     case httpStatus(Int, String)
     case invalidResponse(String)
+    case commandFailed(Int32)
+    case commandTimeout
 
     public var description: String {
         switch self {
@@ -65,6 +67,8 @@ public enum AIProviderError: Error, Sendable, Equatable, CustomStringConvertible
         case .invalidRequest(let message): "PEARFY_AI_002: \(message)"
         case .httpStatus(let status, let message): "PEARFY_AI_003: provider returned HTTP \(status): \(message)"
         case .invalidResponse(let message): "PEARFY_AI_004: \(message)"
+        case .commandFailed(let status): "PEARFY_AI_005: AI command exited with status \(status)"
+        case .commandTimeout: "PEARFY_AI_006: AI command timed out"
         }
     }
 }

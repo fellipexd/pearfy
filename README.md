@@ -221,6 +221,23 @@ the default configuration keeps the UI disabled. See
 `docs/PEARFY-DEVKIT-UI.md` for package setup, router installation, telemetry
 limits, and endpoints.
 
+## PearfyGameServer
+
+`PearfyGameServer` is an optional server-side module for short-lived game session
+tickets and matchmaking contracts. Install it with `pearfy add gameserver`.
+It does not provide gRPC/WebSocket listeners, TLS, matchmaking storage or an
+authoritative simulation. Ticket revocation is process-local; multi-instance
+deployments need shared session storage. UDP remains outside this module until
+authenticated datagrams and abuse controls are implemented on both ends. See
+`docs/GAMESERVER.md` and the PearfyEngine
+`Documentation/GameServerTransportIntegration.md` guide.
+
+The CLI includes starter profiles: `pearfy gameserver modes` compares light,
+medium and high; `pearfy gameserver template --mode <light|medium|high>` prints
+JSON. Swift uses ARC in every mode; ownership-oriented buffers can reduce copies
+but do not disable ARC. The high profile describes binary UDP as its target
+while keeping UDP disabled until secure datagram support exists on both sides.
+
 ## Skills-first
 
 `AGENTS.md` contains only global rules. Technical knowledge lives in

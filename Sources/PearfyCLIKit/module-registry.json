@@ -5,22 +5,36 @@
       "version": "1.6",
       "name": "PearfyPopulate",
       "summary": "Bounded synthetic PostgreSQL data generation",
-      "modules": ["populate"],
-      "commands": ["pearfy add populate", "pearfy populate inspect|profile|plan|preview|approve|run|status|verify|report"]
+      "modules": [
+        "populate"
+      ],
+      "commands": [
+        "pearfy add populate",
+        "pearfy populate inspect|profile|plan|preview|approve|run|status|verify|report"
+      ]
     },
     {
       "version": "1.7",
       "name": "PearfyDevKitUI",
       "summary": "Optional authenticated development dashboard",
-      "modules": ["devkit-ui"],
-      "commands": ["pearfy add devkit-ui", "pearfy devkit start|open|doctor|export"]
+      "modules": [
+        "devkit-ui"
+      ],
+      "commands": [
+        "pearfy add devkit-ui",
+        "pearfy devkit start|open|doctor|export"
+      ]
     },
     {
       "version": "1.8",
       "name": "PearfyGatewayLab",
       "summary": "Optional deterministic in-process fake HTTP integrations",
-      "modules": ["gateway-lab"],
-      "commands": ["pearfy add gateway-lab"]
+      "modules": [
+        "gateway-lab"
+      ],
+      "commands": [
+        "pearfy add gateway-lab"
+      ]
     }
   ],
   "projectStatusSemantics": {
@@ -37,16 +51,46 @@
       "available": true,
       "summary": "HTTP/NIO, route registry, controller macros, configuration, DI and application context",
       "requires": [],
-      "products": ["PearfyConfiguration", "PearfyContext", "PearfyMacros", "PearfyNIO", "PearfyValidation", "PearfyWeb"],
-      "capabilities": ["HTTP router and typed controller macros", "Route registry with template paths and groups", "Application configuration and lifecycle", "Dependency injection and request scopes"],
-      "configurationChecks": ["Route/server/lifecycle registration is application code; package inspection cannot prove runtime wiring."],
+      "products": [
+        "PearfyConfiguration",
+        "PearfyContext",
+        "PearfyMacros",
+        "PearfyNIO",
+        "PearfyValidation",
+        "PearfyWeb"
+      ],
+      "capabilities": [
+        "HTTP router and typed controller macros",
+        "Route registry with template paths and groups",
+        "Application configuration and lifecycle",
+        "Dependency injection and request scopes"
+      ],
+      "configurationChecks": [
+        "Route/server/lifecycle registration is application code; package inspection cannot prove runtime wiring."
+      ],
       "skill": "pearfy-core",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-core/references/http-and-lifecycle.md", ".agents/skills/pearfy-core/references/dependency-injection.md"],
-      "cliCommands": ["pearfy new", "pearfy modules doctor"],
-      "contracts": ["Sources/PearfyWeb/HTTPRouter.swift", "Sources/PearfyWeb/HTTPTypes.swift", "Sources/PearfyContext/ApplicationContext.swift"],
-      "restrictions": ["TLS and WebSocket transports are not supplied by the current HTTP server", "Use registered route templates, not concrete request paths, for metrics"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-core/references/http-and-lifecycle.md",
+        ".agents/skills/pearfy-core/references/dependency-injection.md"
+      ],
+      "cliCommands": [
+        "pearfy new",
+        "pearfy modules doctor"
+      ],
+      "contracts": [
+        "Sources/PearfyWeb/HTTPRouter.swift",
+        "Sources/PearfyWeb/HTTPTypes.swift",
+        "Sources/PearfyContext/ApplicationContext.swift"
+      ],
+      "restrictions": [
+        "TLS and WebSocket transports are not supplied by the current HTTP server",
+        "Use registered route templates, not concrete request paths, for metrics"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -57,17 +101,40 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "JWT/API-key authentication and HTTP authorization policies",
-      "requires": ["http"],
-      "products": ["PearfySecurity"],
-      "capabilities": ["HMAC JWT validation", "API-key authentication", "Bearer and role authorization middleware"],
-      "configurationChecks": ["Authentication and authorization middleware/policies must be configured by the application."],
+      "requires": [
+        "http"
+      ],
+      "products": [
+        "PearfySecurity"
+      ],
+      "capabilities": [
+        "HMAC JWT validation",
+        "API-key authentication",
+        "Bearer and role authorization middleware"
+      ],
+      "configurationChecks": [
+        "Authentication and authorization middleware/policies must be configured by the application."
+      ],
       "skill": "pearfy-security",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-security/references/authentication-and-policy.md"],
-      "cliCommands": ["pearfy add security", "pearfy remove security"],
-      "contracts": ["Sources/PearfySecurity/Security.swift"],
-      "restrictions": ["Authorization is enforced by server middleware, never by client SDK omission", "JWT fallback keys must be explicitly configured"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-security/references/authentication-and-policy.md"
+      ],
+      "cliCommands": [
+        "pearfy add security",
+        "pearfy remove security"
+      ],
+      "contracts": [
+        "Sources/PearfySecurity/Security.swift"
+      ],
+      "restrictions": [
+        "Authorization is enforced by server middleware, never by client SDK omission",
+        "JWT fallback keys must be explicitly configured"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -78,17 +145,42 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "Social actors, graph policies, content contracts and moderation worker",
-      "requires": ["data", "security"],
-      "products": ["PearfySocial"],
-      "capabilities": ["Actor/handle and visibility contracts", "Social graph and content protocols", "Generic moderation work coordinator"],
-      "configurationChecks": ["Application identity ownership and read-visibility policy require explicit wiring."],
+      "requires": [
+        "data",
+        "security"
+      ],
+      "products": [
+        "PearfySocial"
+      ],
+      "capabilities": [
+        "Actor/handle and visibility contracts",
+        "Social graph and content protocols",
+        "Generic moderation work coordinator"
+      ],
+      "configurationChecks": [
+        "Application identity ownership and read-visibility policy require explicit wiring."
+      ],
       "skill": "pearfy-social",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-social/references/graph-and-content.md"],
-      "cliCommands": ["pearfy add social", "pearfy remove social"],
-      "contracts": ["Sources/PearfySocial/SocialGraph.swift", "Sources/PearfySocial/SocialContent.swift"],
-      "restrictions": ["Content/feed PostgreSQL storage and durable outbox are not implemented", "Do not infer authorization from SDK exports"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-social/references/graph-and-content.md"
+      ],
+      "cliCommands": [
+        "pearfy add social",
+        "pearfy remove social"
+      ],
+      "contracts": [
+        "Sources/PearfySocial/SocialGraph.swift",
+        "Sources/PearfySocial/SocialContent.swift"
+      ],
+      "restrictions": [
+        "Content/feed PostgreSQL storage and durable outbox are not implemented",
+        "Do not infer authorization from SDK exports"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -99,17 +191,38 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "PostgreSQL persistence adapter for PearfySocial graph operations",
-      "requires": ["social", "postgres"],
-      "products": ["PearfySocialPostgres"],
-      "capabilities": ["Actor and graph persistence", "Follow/block policy operations"],
-      "configurationChecks": ["PostgreSQL service and adapter registration must be configured by the application."],
+      "requires": [
+        "social",
+        "postgres"
+      ],
+      "products": [
+        "PearfySocialPostgres"
+      ],
+      "capabilities": [
+        "Actor and graph persistence",
+        "Follow/block policy operations"
+      ],
+      "configurationChecks": [
+        "PostgreSQL service and adapter registration must be configured by the application."
+      ],
       "skill": "pearfy-social-postgres",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-social-postgres/references/storage-boundary.md"],
-      "cliCommands": ["pearfy add social-postgres"],
-      "contracts": ["Sources/PearfySocialPostgres/PostgresSocialGraphStore.swift"],
-      "restrictions": ["Social content/outbox persistence is not available in this adapter"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-social-postgres/references/storage-boundary.md"
+      ],
+      "cliCommands": [
+        "pearfy add social-postgres"
+      ],
+      "contracts": [
+        "Sources/PearfySocialPostgres/PostgresSocialGraphStore.swift"
+      ],
+      "restrictions": [
+        "Social content/outbox persistence is not available in this adapter"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -120,17 +233,40 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "Route groups and typed contract metadata for HTTP operations",
-      "requires": ["http"],
-      "products": ["PearfyConnect"],
-      "capabilities": ["Route group metadata", "Deterministic contract IR", "OpenAPI route export"],
-      "configurationChecks": ["Route groups and target schema discovery must be present in the application build."],
+      "requires": [
+        "http"
+      ],
+      "products": [
+        "PearfyConnect"
+      ],
+      "capabilities": [
+        "Route group metadata",
+        "Deterministic contract IR",
+        "OpenAPI route export"
+      ],
+      "configurationChecks": [
+        "Route groups and target schema discovery must be present in the application build."
+      ],
       "skill": "pearfy-connect",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-connect/references/route-contracts.md"],
-      "cliCommands": ["pearfy add connect"],
-      "contracts": ["Sources/PearfyConnect/ContractCompiler.swift", "Sources/PearfyWeb/HTTPRouteGroup.swift"],
-      "restrictions": ["SDK generation and contract diff are not implemented", "Route groups do not grant authorization"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-connect/references/route-contracts.md"
+      ],
+      "cliCommands": [
+        "pearfy add connect"
+      ],
+      "contracts": [
+        "Sources/PearfyConnect/ContractCompiler.swift",
+        "Sources/PearfyWeb/HTTPRouteGroup.swift"
+      ],
+      "restrictions": [
+        "SDK generation and contract diff are not implemented",
+        "Route groups do not grant authorization"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -141,17 +277,41 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "Parameterized SQL, schema IR and initial PostgreSQL migration planning",
-      "requires": ["http"],
-      "products": ["PearfyData"],
-      "capabilities": ["Safe SQL builders", "Schema IR/fingerprint", "Migration plan generation"],
-      "configurationChecks": ["Schema IR/models and migration artifacts are application-specific."],
+      "requires": [
+        "http"
+      ],
+      "products": [
+        "PearfyData"
+      ],
+      "capabilities": [
+        "Safe SQL builders",
+        "Schema IR/fingerprint",
+        "Migration plan generation"
+      ],
+      "configurationChecks": [
+        "Schema IR/models and migration artifacts are application-specific."
+      ],
       "skill": "pearfy-data",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-data/references/schema-and-sql.md"],
-      "cliCommands": ["pearfy add data"],
-      "contracts": ["Sources/PearfyData/SQLQuery.swift", "Sources/PearfyData/SchemaCompiler.swift", "Sources/PearfyData/SQLMigrationCatalog.swift"],
-      "restrictions": ["ORM query execution and complete migration lifecycle are not implemented", "Never interpolate user values into SQL"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-data/references/schema-and-sql.md"
+      ],
+      "cliCommands": [
+        "pearfy add data"
+      ],
+      "contracts": [
+        "Sources/PearfyData/SQLQuery.swift",
+        "Sources/PearfyData/SchemaCompiler.swift",
+        "Sources/PearfyData/SQLMigrationCatalog.swift"
+      ],
+      "restrictions": [
+        "ORM query execution and complete migration lifecycle are not implemented",
+        "Never interpolate user values into SQL"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -163,16 +323,36 @@
       "available": true,
       "summary": "Generic REQUIRED propagation and unit-of-work contract",
       "requires": [],
-      "products": ["PearfyTransactions"],
-      "capabilities": ["REQUIRED nesting", "Rollback-only propagation", "Commit-unknown classification"],
-      "configurationChecks": ["A store adapter must wrap one physical transaction and be bound by the application."],
+      "products": [
+        "PearfyTransactions"
+      ],
+      "capabilities": [
+        "REQUIRED nesting",
+        "Rollback-only propagation",
+        "Commit-unknown classification"
+      ],
+      "configurationChecks": [
+        "A store adapter must wrap one physical transaction and be bound by the application."
+      ],
       "skill": "pearfy-transactions",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-transactions/references/transaction-boundary.md"],
-      "cliCommands": ["pearfy add transactions"],
-      "contracts": ["Sources/PearfyTransactions/TransactionManager.swift"],
-      "restrictions": ["Atomicity covers only the enlisted physical store transaction", "Do not claim cross-database atomicity"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-transactions/references/transaction-boundary.md"
+      ],
+      "cliCommands": [
+        "pearfy add transactions"
+      ],
+      "contracts": [
+        "Sources/PearfyTransactions/TransactionManager.swift"
+      ],
+      "restrictions": [
+        "Atomicity covers only the enlisted physical store transaction",
+        "Do not claim cross-database atomicity"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -183,17 +363,46 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "PostgreSQL connection, parameterized execution, migrations and transaction adapter",
-      "requires": ["data", "transactions"],
-      "products": ["PearfyPostgres"],
-      "capabilities": ["PostgresNIO connection adapter", "Parameterized queries", "Migration runner and transaction integration"],
-      "configurationChecks": ["Connection settings and PostgreSQL service must be configured by the application."],
+      "requires": [
+        "data",
+        "transactions"
+      ],
+      "products": [
+        "PearfyPostgres"
+      ],
+      "capabilities": [
+        "PostgresNIO connection adapter",
+        "Parameterized queries",
+        "Migration runner and transaction integration"
+      ],
+      "configurationChecks": [
+        "Connection settings and PostgreSQL service must be configured by the application."
+      ],
       "skill": "pearfy-postgres",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-postgres/references/connection-and-migrations.md"],
-      "cliCommands": ["pearfy add postgres", "pearfy migrations generate|apply", "pearfy migrations import-java (legacy conversion)"],
-      "contracts": ["Sources/PearfyData/SQLMigrationCatalog.swift", "Sources/PearfyData/SQLMigrationScript.swift", "Sources/PearfyPostgres/PostgresDatabase.swift", "Sources/PearfyPostgres/PostgresConnectionSettings.swift"],
-      "restrictions": ["Only PostgreSQL is supported by this adapter", "Destructive migration changes require explicit approval"],
-      "validation": ["swift build", "bash scripts/test-unit.sh", "bash scripts/test-integrations.sh"],
+      "references": [
+        ".agents/skills/pearfy-postgres/references/connection-and-migrations.md"
+      ],
+      "cliCommands": [
+        "pearfy add postgres",
+        "pearfy migrations generate|apply",
+        "pearfy migrations import-java (legacy conversion)"
+      ],
+      "contracts": [
+        "Sources/PearfyData/SQLMigrationCatalog.swift",
+        "Sources/PearfyData/SQLMigrationScript.swift",
+        "Sources/PearfyPostgres/PostgresDatabase.swift",
+        "Sources/PearfyPostgres/PostgresConnectionSettings.swift"
+      ],
+      "restrictions": [
+        "Only PostgreSQL is supported by this adapter",
+        "Destructive migration changes require explicit approval"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh",
+        "bash scripts/test-integrations.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -204,20 +413,61 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "Bounded deterministic synthetic data generation for PostgreSQL",
-      "requires": ["postgres"],
-      "products": ["PearfyPopulateCore", "PearfyPopulatePostgres"],
-      "capabilities": ["Schema inspection and reconciliation", "Deterministic plans and previews", "Approved bounded batch execution and reports"],
-      "configurationChecks": ["PostgreSQL endpoint, environment safeguards and execution approval are checked at runtime by the CLI."],
+      "requires": [
+        "postgres"
+      ],
+      "products": [
+        "PearfyPopulateCore",
+        "PearfyPopulatePostgres"
+      ],
+      "capabilities": [
+        "Schema inspection and reconciliation",
+        "Deterministic plans and previews",
+        "Approved bounded batch execution and reports"
+      ],
+      "configurationChecks": [
+        "PostgreSQL endpoint, environment safeguards and execution approval are checked at runtime by the CLI."
+      ],
       "skill": "pearfy-populate",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-populate/references/current-boundary.md"],
-      "cliCommands": ["pearfy add populate", "pearfy populate inspect|profile|plan|preview|approve|run|status|verify|report"],
-      "contracts": ["Sources/PearfyPopulateCore/", "Sources/PearfyPopulatePostgres/", "Sources/PearfyPopulateCLI/"],
-      "restrictions": ["Local by default; staging needs explicit opt-in", "No DDL, arbitrary SQL, cleanup, COPY, or unsupported schema coercion"],
-      "validation": ["swift build", "bash scripts/test-unit.sh", "bash scripts/test-integrations.sh"],
-      "mcpTools": ["pearfy.populate.inspect", "pearfy.populate.profile", "pearfy.populate.plan", "pearfy.populate.preview", "pearfy.populate.status", "pearfy.populate.verify", "pearfy.populate.report"],
-      "mcpResources": ["pearfy://populate/schema"],
-      "mcpResourceTemplates": ["pearfy://populate/plans/{id}", "pearfy://populate/runs/{id}", "pearfy://populate/profiles/{table}"],
+      "references": [
+        ".agents/skills/pearfy-populate/references/current-boundary.md"
+      ],
+      "cliCommands": [
+        "pearfy add populate",
+        "pearfy populate inspect|profile|plan|preview|approve|run|status|verify|report"
+      ],
+      "contracts": [
+        "Sources/PearfyPopulateCore/",
+        "Sources/PearfyPopulatePostgres/",
+        "Sources/PearfyPopulateCLI/"
+      ],
+      "restrictions": [
+        "Local by default; staging needs explicit opt-in",
+        "No DDL, arbitrary SQL, cleanup, COPY, or unsupported schema coercion"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh",
+        "bash scripts/test-integrations.sh"
+      ],
+      "mcpTools": [
+        "pearfy.populate.inspect",
+        "pearfy.populate.profile",
+        "pearfy.populate.plan",
+        "pearfy.populate.preview",
+        "pearfy.populate.status",
+        "pearfy.populate.verify",
+        "pearfy.populate.report"
+      ],
+      "mcpResources": [
+        "pearfy://populate/schema"
+      ],
+      "mcpResourceTemplates": [
+        "pearfy://populate/plans/{id}",
+        "pearfy://populate/runs/{id}",
+        "pearfy://populate/profiles/{table}"
+      ],
       "introducedInSDK": "1.6"
     },
     {
@@ -227,17 +477,39 @@
       "implementationStatus": "implemented",
       "available": true,
       "summary": "Bounded in-memory cache with metrics",
-      "requires": ["http"],
-      "products": ["PearfyCache"],
-      "capabilities": ["TTL and namespace isolation", "Bounded storage and eviction", "Optional Redis adapter"],
-      "configurationChecks": ["The application must register and use the cache; no external service is required for in-memory mode."],
+      "requires": [
+        "http"
+      ],
+      "products": [
+        "PearfyCache"
+      ],
+      "capabilities": [
+        "TTL and namespace isolation",
+        "Bounded storage and eviction",
+        "Optional Redis adapter"
+      ],
+      "configurationChecks": [
+        "The application must register and use the cache; no external service is required for in-memory mode."
+      ],
       "skill": "pearfy-cache",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-cache/references/cache-contract.md"],
-      "cliCommands": ["pearfy add cache"],
-      "contracts": ["Sources/PearfyCache/InMemoryCache.swift"],
-      "restrictions": ["The in-memory implementation is process-local", "Redis behavior requires the redis module"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-cache/references/cache-contract.md"
+      ],
+      "cliCommands": [
+        "pearfy add cache"
+      ],
+      "contracts": [
+        "Sources/PearfyCache/InMemoryCache.swift"
+      ],
+      "restrictions": [
+        "The in-memory implementation is process-local",
+        "Redis behavior requires the redis module"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -248,17 +520,39 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "Bounded in-memory message broker",
-      "requires": ["http"],
-      "products": ["PearfyMessaging"],
-      "capabilities": ["Bounded topics and payloads", "Ack/retry/dead-letter contracts", "In-memory broker implementation"],
-      "configurationChecks": ["The application must register and use the process-local broker."],
+      "requires": [
+        "http"
+      ],
+      "products": [
+        "PearfyMessaging"
+      ],
+      "capabilities": [
+        "Bounded topics and payloads",
+        "Ack/retry/dead-letter contracts",
+        "In-memory broker implementation"
+      ],
+      "configurationChecks": [
+        "The application must register and use the process-local broker."
+      ],
       "skill": "pearfy-messaging",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-messaging/references/delivery-contract.md"],
-      "cliCommands": ["pearfy add messaging"],
-      "contracts": ["Sources/PearfyMessaging/InMemoryBroker.swift"],
-      "restrictions": ["In-memory messages do not survive process termination", "Use redis only when its semantics are explicitly accepted"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-messaging/references/delivery-contract.md"
+      ],
+      "cliCommands": [
+        "pearfy add messaging"
+      ],
+      "contracts": [
+        "Sources/PearfyMessaging/InMemoryBroker.swift"
+      ],
+      "restrictions": [
+        "In-memory messages do not survive process termination",
+        "Use redis only when its semantics are explicitly accepted"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -269,17 +563,41 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "Redis-backed cache and message broker adapters",
-      "requires": ["cache", "messaging"],
-      "products": ["PearfyRedis"],
-      "capabilities": ["Redis cache store", "Persistent broker adapter"],
-      "configurationChecks": ["External Redis endpoint, authentication and TLS settings are application configuration."],
+      "requires": [
+        "cache",
+        "messaging"
+      ],
+      "products": [
+        "PearfyRedis"
+      ],
+      "capabilities": [
+        "Redis cache store",
+        "Persistent broker adapter"
+      ],
+      "configurationChecks": [
+        "External Redis endpoint, authentication and TLS settings are application configuration."
+      ],
       "skill": "pearfy-redis",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-redis/references/adapters.md"],
-      "cliCommands": ["pearfy add redis"],
-      "contracts": ["Sources/PearfyRedis/RedisCacheStore.swift", "Sources/PearfyRedis/RedisMessageBroker.swift"],
-      "restrictions": ["Requires a separately configured Redis service", "Do not assume cache eviction or delivery guarantees beyond adapter contracts"],
-      "validation": ["swift build", "bash scripts/test-unit.sh", "bash scripts/test-integrations.sh"],
+      "references": [
+        ".agents/skills/pearfy-redis/references/adapters.md"
+      ],
+      "cliCommands": [
+        "pearfy add redis"
+      ],
+      "contracts": [
+        "Sources/PearfyRedis/RedisCacheStore.swift",
+        "Sources/PearfyRedis/RedisMessageBroker.swift"
+      ],
+      "restrictions": [
+        "Requires a separately configured Redis service",
+        "Do not assume cache eviction or delivery guarantees beyond adapter contracts"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh",
+        "bash scripts/test-integrations.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -290,17 +608,37 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "Local fixed-delay scheduler",
-      "requires": ["http"],
-      "products": ["PearfyJobs"],
-      "capabilities": ["Named fixed-delay jobs", "Cooperative stop and overlap protection"],
-      "configurationChecks": ["Jobs must be registered with the application lifecycle."],
+      "requires": [
+        "http"
+      ],
+      "products": [
+        "PearfyJobs"
+      ],
+      "capabilities": [
+        "Named fixed-delay jobs",
+        "Cooperative stop and overlap protection"
+      ],
+      "configurationChecks": [
+        "Jobs must be registered with the application lifecycle."
+      ],
       "skill": "pearfy-jobs",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-jobs/references/scheduler.md"],
-      "cliCommands": ["pearfy add jobs"],
-      "contracts": ["Sources/PearfyJobs/JobScheduler.swift"],
-      "restrictions": ["Schedule is process-local; durable distributed jobs are not implemented"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-jobs/references/scheduler.md"
+      ],
+      "cliCommands": [
+        "pearfy add jobs"
+      ],
+      "contracts": [
+        "Sources/PearfyJobs/JobScheduler.swift"
+      ],
+      "restrictions": [
+        "Schedule is process-local; durable distributed jobs are not implemented"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -311,17 +649,40 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "Outbound HTTP concurrency limits and resilience policies",
-      "requires": ["http"],
-      "products": ["PearfyCloud"],
-      "capabilities": ["Concurrency and queue bounds", "Retry and circuit breaker policies", "HTTP client contract"],
-      "configurationChecks": ["Outbound endpoint, transport and resilience policies are application configuration."],
+      "requires": [
+        "http"
+      ],
+      "products": [
+        "PearfyCloud"
+      ],
+      "capabilities": [
+        "Concurrency and queue bounds",
+        "Retry and circuit breaker policies",
+        "HTTP client contract"
+      ],
+      "configurationChecks": [
+        "Outbound endpoint, transport and resilience policies are application configuration."
+      ],
       "skill": "pearfy-cloud",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-cloud/references/http-client.md"],
-      "cliCommands": ["pearfy add cloud"],
-      "contracts": ["Sources/PearfyCloud/HTTPClient.swift", "Sources/PearfyCloud/HTTPConcurrencyLimiter.swift"],
-      "restrictions": ["Retries must remain limited to idempotent operations", "Remote endpoints require secure transport"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-cloud/references/http-client.md"
+      ],
+      "cliCommands": [
+        "pearfy add cloud"
+      ],
+      "contracts": [
+        "Sources/PearfyCloud/HTTPClient.swift",
+        "Sources/PearfyCloud/HTTPConcurrencyLimiter.swift"
+      ],
+      "restrictions": [
+        "Retries must remain limited to idempotent operations",
+        "Remote endpoints require secure transport"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -331,18 +692,47 @@
       "version": "workspace",
       "implementationStatus": "partial",
       "available": true,
-      "summary": "OpenAI-compatible application chat client",
-      "requires": ["cloud"],
-      "products": ["PearfyAI"],
-      "capabilities": ["OpenAI-compatible chat completion client", "Explicit transport and endpoint policy"],
-      "configurationChecks": ["Secure provider endpoint and backend-held credentials must be configured by the application."],
+      "summary": "OpenAI-compatible chat, structured workflows, embeddings and official Codex CLI adapter",
+      "requires": [
+        "cloud"
+      ],
+      "products": [
+        "PearfyAI"
+      ],
+      "capabilities": [
+        "OpenAI-compatible chat completion client",
+        "Official Codex CLI subscription adapter",
+        "OpenAI-compatible embeddings",
+        "Typed workflow, RAG and structured-output contracts",
+        "Explicit transport and endpoint policy"
+      ],
+      "configurationChecks": [
+        "Secure provider endpoint and backend-held credentials must be configured by the application.",
+        "Codex CLI mode requires a locally installed and authenticated Codex CLI under the worker account."
+      ],
       "skill": "pearfy-ai",
-      "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-ai/references/runtime-client.md"],
-      "cliCommands": ["pearfy add ai"],
-      "contracts": ["Sources/PearfyAI/OpenAICompatibleClient.swift"],
-      "restrictions": ["This is application runtime AI, separate from DevKit coding agents", "Provider secrets stay server-side"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "skillVersion": "1.1.0",
+      "references": [
+        ".agents/skills/pearfy-ai/references/runtime-client.md"
+      ],
+      "cliCommands": [
+        "pearfy add ai"
+      ],
+      "contracts": [
+        "Sources/PearfyAI/OpenAICompatibleClient.swift",
+        "Sources/PearfyAI/CodexCLIProvider.swift",
+        "Sources/PearfyAI/Embeddings.swift",
+        "Sources/PearfyAI/Workflow.swift"
+      ],
+      "restrictions": [
+        "This is application runtime AI, separate from DevKit/OpenCode configuration",
+        "Codex CLI runs ephemeral with read-only sandbox and its own account quota",
+        "Provider secrets stay server-side and Codex OAuth tokens remain owned by Codex CLI"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -353,17 +743,40 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "Health/readiness and bounded Prometheus metrics",
-      "requires": ["http"],
-      "products": ["PearfyObservability"],
-      "capabilities": ["Health registry and readiness gate", "Counter, gauge and histogram registry", "HTTP metrics middleware"],
-      "configurationChecks": ["Health probes, middleware and metrics routes must be explicitly installed by the application."],
+      "requires": [
+        "http"
+      ],
+      "products": [
+        "PearfyObservability"
+      ],
+      "capabilities": [
+        "Health registry and readiness gate",
+        "Counter, gauge and histogram registry",
+        "HTTP metrics middleware"
+      ],
+      "configurationChecks": [
+        "Health probes, middleware and metrics routes must be explicitly installed by the application."
+      ],
       "skill": "pearfy-observability",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-observability/references/health-and-metrics.md"],
-      "cliCommands": ["pearfy add observability"],
-      "contracts": ["Sources/PearfyObservability/Health.swift", "Sources/PearfyObservability/Metrics.swift"],
-      "restrictions": ["Structured logs and distributed traces are not implemented", "Metric label cardinality is bounded"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-observability/references/health-and-metrics.md"
+      ],
+      "cliCommands": [
+        "pearfy add observability"
+      ],
+      "contracts": [
+        "Sources/PearfyObservability/Health.swift",
+        "Sources/PearfyObservability/Metrics.swift"
+      ],
+      "restrictions": [
+        "Structured logs and distributed traces are not implemented",
+        "Metric label cardinality is bounded"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -374,17 +787,43 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "Optional authenticated development dashboard using live route templates and pluggable telemetry providers",
-      "requires": ["observability"],
-      "products": ["PearfyDevKitUI"],
-      "capabilities": ["Opt-in local dashboard", "Bearer-protected read-only APIs", "Live route registry and allowlisted HTTP metrics adapter", "Bounded in-process route traces and correlated sanitized HTTP errors"],
-      "configurationChecks": ["Router installation, enable flag, strong token and safe listener binding require explicit application configuration."],
+      "requires": [
+        "observability"
+      ],
+      "products": [
+        "PearfyDevKitUI"
+      ],
+      "capabilities": [
+        "Opt-in local dashboard",
+        "Bearer-protected read-only APIs",
+        "Live route registry and allowlisted HTTP metrics adapter",
+        "Bounded in-process route traces and correlated sanitized HTTP errors"
+      ],
+      "configurationChecks": [
+        "Router installation, enable flag, strong token and safe listener binding require explicit application configuration."
+      ],
       "skill": "pearfy-devkit",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-devkit/references/dashboard-and-data-sources.md", ".agents/recipes/README.md"],
-      "cliCommands": ["pearfy add devkit-ui", "pearfy devkit start|open|doctor|export"],
-      "contracts": ["Sources/PearfyDevKitUI/DevKitUI.swift"],
-      "restrictions": ["Disabled by default and requires a bearer token when enabled", "Distributed spans, logs, query, CPU, RSS and storage data need explicit providers", "Never capture concrete request paths, query values, request/response bodies, credentials, cookies, exception messages or SQL bindings"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-devkit/references/dashboard-and-data-sources.md",
+        ".agents/recipes/README.md"
+      ],
+      "cliCommands": [
+        "pearfy add devkit-ui",
+        "pearfy devkit start|open|doctor|export"
+      ],
+      "contracts": [
+        "Sources/PearfyDevKitUI/DevKitUI.swift"
+      ],
+      "restrictions": [
+        "Disabled by default and requires a bearer token when enabled",
+        "Distributed spans, logs, query, CPU, RSS and storage data need explicit providers",
+        "Never capture concrete request paths, query values, request/response bodies, credentials, cookies, exception messages or SQL bindings"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": "1.7"
     },
@@ -396,16 +835,33 @@
       "available": true,
       "summary": "Test context and dependency overrides",
       "requires": [],
-      "products": ["PearfyTesting"],
-      "capabilities": ["Isolated test context overrides"],
-      "configurationChecks": ["Overrides are test code, not a runtime service; package test target must import the product."],
+      "products": [
+        "PearfyTesting"
+      ],
+      "capabilities": [
+        "Isolated test context overrides"
+      ],
+      "configurationChecks": [
+        "Overrides are test code, not a runtime service; package test target must import the product."
+      ],
       "skill": "pearfy-testing",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-testing/references/test-context.md"],
-      "cliCommands": ["pearfy add testing"],
-      "contracts": ["Sources/PearfyTesting/TestContext.swift"],
-      "restrictions": ["This module does not replace the package's Swift Testing or integration test setup"],
-      "validation": ["swift build", "bash scripts/test-unit.sh"],
+      "references": [
+        ".agents/skills/pearfy-testing/references/test-context.md"
+      ],
+      "cliCommands": [
+        "pearfy add testing"
+      ],
+      "contracts": [
+        "Sources/PearfyTesting/TestContext.swift"
+      ],
+      "restrictions": [
+        "This module does not replace the package's Swift Testing or integration test setup"
+      ],
+      "validation": [
+        "swift build",
+        "bash scripts/test-unit.sh"
+      ],
       "mcpTools": [],
       "introducedInSDK": null
     },
@@ -416,15 +872,21 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "Roadmap-only identity and credential linking; no installable product in this checkout",
-      "requires": ["security"],
+      "requires": [
+        "security"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-Roadmap-v1.5-Social-Identity-DevKit/docs/v1.5/06-IDENTITY-SOCIAL-LOGIN.md"],
+      "references": [
+        "roadmap/Pearfy-Roadmap-v1.5-Social-Identity-DevKit/docs/v1.5/06-IDENTITY-SOCIAL-LOGIN.md"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; do not import or invent Identity APIs"],
+      "restrictions": [
+        "Planned only; do not import or invent Identity APIs"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -436,15 +898,22 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "Roadmap-only OAuth/OIDC social login",
-      "requires": ["identity", "security"],
+      "requires": [
+        "identity",
+        "security"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-Roadmap-v1.5-Social-Identity-DevKit/docs/v1.5/06-IDENTITY-SOCIAL-LOGIN.md"],
+      "references": [
+        "roadmap/Pearfy-Roadmap-v1.5-Social-Identity-DevKit/docs/v1.5/06-IDENTITY-SOCIAL-LOGIN.md"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; no login, OAuth or credential APIs are available"],
+      "restrictions": [
+        "Planned only; no login, OAuth or credential APIs are available"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -456,15 +925,23 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "No PaymentEngine product exists in this checkout",
-      "requires": ["data", "transactions", "security"],
+      "requires": [
+        "data",
+        "transactions",
+        "security"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-roadmap 3/docs/payments/"],
+      "references": [
+        "roadmap/Pearfy-roadmap 3/docs/payments/"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; do not implement financial APIs based on roadmap examples"],
+      "restrictions": [
+        "Planned only; do not implement financial APIs based on roadmap examples"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -476,15 +953,21 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "Roadmap-only backoffice authorization and UI module",
-      "requires": ["security"],
+      "requires": [
+        "security"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-roadmap 3/docs/extensions/13-BACKOFFICE-RBAC-GRUPOS.md"],
+      "references": [
+        "roadmap/Pearfy-roadmap 3/docs/extensions/13-BACKOFFICE-RBAC-GRUPOS.md"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; no RBAC or backoffice products are available"],
+      "restrictions": [
+        "Planned only; no RBAC or backoffice products are available"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -496,15 +979,22 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "Roadmap-only durable approval workflows",
-      "requires": ["security", "transactions"],
+      "requires": [
+        "security",
+        "transactions"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-roadmap 3/docs/extensions/13-BACKOFFICE-RBAC-GRUPOS.md"],
+      "references": [
+        "roadmap/Pearfy-roadmap 3/docs/extensions/13-BACKOFFICE-RBAC-GRUPOS.md"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; no approval workflow APIs are available"],
+      "restrictions": [
+        "Planned only; no approval workflow APIs are available"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -516,15 +1006,22 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "No CRM product exists in this checkout",
-      "requires": ["data", "security"],
+      "requires": [
+        "data",
+        "security"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-roadmap 3/docs/extensions/"],
+      "references": [
+        "roadmap/Pearfy-roadmap 3/docs/extensions/"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; no CRM APIs are available"],
+      "restrictions": [
+        "Planned only; no CRM APIs are available"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -536,15 +1033,22 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "No chatbot workflow product exists in this checkout; PearfyAI is only an application chat client",
-      "requires": ["ai", "messaging"],
+      "requires": [
+        "ai",
+        "messaging"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-roadmap 3/docs/extensions/04-CHATBOT-E-TOOLS.md"],
+      "references": [
+        "roadmap/Pearfy-roadmap 3/docs/extensions/04-CHATBOT-E-TOOLS.md"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; do not treat PearfyAI chat completion as a chatbot workflow engine"],
+      "restrictions": [
+        "Planned only; do not treat PearfyAI chat completion as a chatbot workflow engine"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -556,15 +1060,21 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "Structured logs/exporters are not implemented as a PearfyLogs module",
-      "requires": ["observability"],
+      "requires": [
+        "observability"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-roadmap 3/docs/extensions/09-LOGS-E-EXPORTADORES.md"],
+      "references": [
+        "roadmap/Pearfy-roadmap 3/docs/extensions/09-LOGS-E-EXPORTADORES.md"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; do not claim structured logging or OTLP support"],
+      "restrictions": [
+        "Planned only; do not claim structured logging or OTLP support"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -576,15 +1086,21 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "Existing Prometheus counters are in PearfyObservability; higher-level PearfyMetric analytics are not implemented",
-      "requires": ["observability"],
+      "requires": [
+        "observability"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-roadmap 3/docs/extensions/11-METRIC-E-ANALISE.md"],
+      "references": [
+        "roadmap/Pearfy-roadmap 3/docs/extensions/11-METRIC-E-ANALISE.md"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; do not use the observability registry as PearfyMetric analytics"],
+      "restrictions": [
+        "Planned only; do not use the observability registry as PearfyMetric analytics"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -596,15 +1112,22 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "No durable webhook/outbox product exists in this checkout",
-      "requires": ["http", "transactions"],
+      "requires": [
+        "http",
+        "transactions"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-roadmap 3/docs/extensions/07-WEBHOOKS-JOBS-OUTBOX.md"],
+      "references": [
+        "roadmap/Pearfy-roadmap 3/docs/extensions/07-WEBHOOKS-JOBS-OUTBOX.md"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; do not present webhook delivery guarantees as implemented"],
+      "restrictions": [
+        "Planned only; do not present webhook delivery guarantees as implemented"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -616,15 +1139,21 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "Social notification types exist, but no notification delivery module is implemented",
-      "requires": ["messaging"],
+      "requires": [
+        "messaging"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-roadmap 3/docs/extensions/18-NOTIFICATIONS-STORAGE-IDENTITY-REALTIME.md"],
+      "references": [
+        "roadmap/Pearfy-roadmap 3/docs/extensions/18-NOTIFICATIONS-STORAGE-IDENTITY-REALTIME.md"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; notification delivery and persistence are not available"],
+      "restrictions": [
+        "Planned only; notification delivery and persistence are not available"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -636,15 +1165,22 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "No object storage provider adapter exists in this checkout",
-      "requires": ["data", "security"],
+      "requires": [
+        "data",
+        "security"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-roadmap 3/docs/extensions/18-NOTIFICATIONS-STORAGE-IDENTITY-REALTIME.md"],
+      "references": [
+        "roadmap/Pearfy-roadmap 3/docs/extensions/18-NOTIFICATIONS-STORAGE-IDENTITY-REALTIME.md"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; no signed URL or object ownership APIs are available"],
+      "restrictions": [
+        "Planned only; no signed URL or object ownership APIs are available"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -656,15 +1192,22 @@
       "implementationStatus": "planned",
       "available": false,
       "summary": "No WebSocket/realtime fanout product exists in this checkout",
-      "requires": ["http", "messaging"],
+      "requires": [
+        "http",
+        "messaging"
+      ],
       "products": [],
       "capabilities": [],
       "skill": null,
       "skillVersion": null,
-      "references": ["roadmap/Pearfy-roadmap 3/docs/extensions/18-NOTIFICATIONS-STORAGE-IDENTITY-REALTIME.md"],
+      "references": [
+        "roadmap/Pearfy-roadmap 3/docs/extensions/18-NOTIFICATIONS-STORAGE-IDENTITY-REALTIME.md"
+      ],
       "cliCommands": [],
       "contracts": [],
-      "restrictions": ["Planned only; no websocket or multi-instance realtime API is available"],
+      "restrictions": [
+        "Planned only; no websocket or multi-instance realtime API is available"
+      ],
       "validation": [],
       "mcpTools": [],
       "introducedInSDK": null
@@ -676,19 +1219,891 @@
       "implementationStatus": "partial",
       "available": true,
       "summary": "Opt-in deterministic in-process fake HTTP provider and run-scoped scenario state",
-      "requires": ["http"],
-      "products": ["PearfyGatewayLab"],
-      "capabilities": ["Explicit provider registry", "Run-isolated fake HTTP response sequences", "Virtual clock delays and timeout/reset/malformed faults", "Bounded fixtures, run state and sanitized request journal", "Environment validation; fake HTTP performs no network I/O"],
-      "configurationChecks": ["Call GatewayLabConfiguration.validate() during composition; production fake mode and public hosts in fake/sandbox mode are rejected."],
+      "requires": [
+        "http"
+      ],
+      "products": [
+        "PearfyGatewayLab"
+      ],
+      "capabilities": [
+        "Explicit provider registry",
+        "Run-isolated fake HTTP response sequences",
+        "Virtual clock delays and timeout/reset/malformed faults",
+        "Bounded fixtures, run state and sanitized request journal",
+        "Environment validation; fake HTTP performs no network I/O"
+      ],
+      "configurationChecks": [
+        "Call GatewayLabConfiguration.validate() during composition; production fake mode and public hosts in fake/sandbox mode are rejected."
+      ],
       "skill": "pearfy-gateway-lab",
       "skillVersion": "1.0.0",
-      "references": [".agents/skills/pearfy-gateway-lab/references/sdk.md"],
-      "cliCommands": ["pearfy add gateway-lab", "pearfy ai inspect --module gateway-lab"],
-      "contracts": ["Sources/PearfyGatewayLab/GatewayLab.swift"],
-      "restrictions": ["No standalone server, webhook simulator, real payment port/fake, or live provider adapter", "Fake HTTP never falls back to network"],
-      "validation": ["swift build", "swift test --filter GatewayLabTests"],
+      "references": [
+        ".agents/skills/pearfy-gateway-lab/references/sdk.md"
+      ],
+      "cliCommands": [
+        "pearfy add gateway-lab",
+        "pearfy ai inspect --module gateway-lab"
+      ],
+      "contracts": [
+        "Sources/PearfyGatewayLab/GatewayLab.swift"
+      ],
+      "restrictions": [
+        "No standalone server, webhook simulator, real payment port/fake, or live provider adapter",
+        "Fake HTTP never falls back to network"
+      ],
+      "validation": [
+        "swift build",
+        "swift test --filter GatewayLabTests"
+      ],
       "mcpTools": [],
       "introducedInSDK": "1.8"
+    },
+    {
+      "id": "gameserver",
+      "name": "Pearfy game server contracts",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Server-side tickets, bounded rooms, deterministic command processing, monotonic fixed-step input driving and single-process world primitives",
+      "requires": [],
+      "products": [
+        "PearfyGameServer"
+      ],
+      "capabilities": [
+        "Bounded HMAC-SHA256 session tickets",
+        "Ticket expiry, revocation and session/player/protocol binding",
+        "WSS-only session offers",
+        "Bounded in-process rooms with safe paged public discovery, one-use player-bound expiring invitations and reconnect grace enforced at join",
+        "Bounded turn-based command reducer that scopes idempotency to command ID, player and exact payload bytes",
+        "Co-op objective commands bind command IDs to player, objective and state digests with a configured history ceiling",
+        "Co-op objective dependencies are validated as a bounded acyclic graph and enforced before completion",
+        "Co-op objectives support bounded monotonic progress targets with command idempotency",
+        "Co-op NPC actions use a bounded server-authored tick scheduler with ordered capped drains",
+        "Co-op reconnect grace blocks disconnected-member actions and snapshots until authenticated resume; expiry and abandonment clean private state",
+        "Co-op recovery checkpoints restore bounded private state, command dedupe, deterministic cursor and NPC schedules",
+        "Co-op sessions can expose a seeded replayable SplitMix64 sequence for application-owned decisions",
+        "Co-op public and private state share an aggregate session byte budget",
+        "Deterministic replay validation for complete command checkpoints before accepting gameplay",
+        "Bounded realtime input queue with client sequence validation and fixed-step drain",
+        "Monotonic fixed-step driver with bounded per-tick work, no catch-up bursts and fixed-cardinality overrun metrics",
+        "Three consecutive tick overruns close input admission and stop the driver while preserving queued inputs for recovery",
+        "Reducer or tick-advance failure closes input admission and the tick driver; restart requires application recovery and a new driver",
+        "Drained realtime input payloads are released immediately to reduce retained hot-path memory",
+        "Fixed-cardinality realtime overload metrics for queue pressure and accepted/rejected input counts",
+        "Single-process zone/entity registry with transfer fencing",
+        "CLI starter profiles for light, medium and high resource/transport targets",
+        "Starter templates include fixed-step rate, global/per-player queued input limits, per-tick work ceilings and a three-overrun circuit breaker",
+        "Mode profiles construct the bounded realtime simulation and fixed-step driver directly; recovered sessions can resume from the durable tick cursor"
+      ],
+      "configurationChecks": [
+        "Provide a server-side signing key with at least 32 bytes",
+        "Configure explicit room, queue, event, entity and state limits",
+        "Set fixed-step rate and maximum inputs per tick for the workload; monitor overruns, recover/drain before resuming closed admission, and benchmark target hardware",
+        "Use gameserver-transport for WSS/TLS gameplay and gameserver-grpc for optional gRPC/TLS control"
+      ],
+      "skill": "pearfy-gameserver",
+      "skillVersion": "1.6.0",
+      "references": [
+        "docs/GAMESERVER.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver",
+        "pearfy remove gameserver",
+        "pearfy gameserver modules",
+        "pearfy gameserver modes",
+        "pearfy gameserver template --mode <light|medium|high> [--output <file>]",
+        "pearfy gameserver recipe <turn-based|fps|friendslop|mmo|rooms|dedicated> [--output <file>]",
+        "pearfy gameserver recovery --store redis [--apply] [--output <file>]"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServer/GameSessions.swift",
+        "Sources/PearfyGameServer/GameServerProfiles.swift",
+        "Sources/PearfyGameServer/GameServerModules.swift",
+        "Sources/PearfyGameServer/GameRealtimeFixedStepDriver.swift"
+      ],
+      "restrictions": [
+        "The core product does not include a network listener, TLS termination, gRPC/protobuf, or UDP transport; WSS is a separate optional product",
+        "Room and world state, ticket revocation, and command history are in-process; multi-instance deployment needs shared stores",
+        "Realtime primitives accept and drain inputs but deliberately do not implement genre-specific physics, anti-cheat, lag compensation, co-op mission rules, or interest management",
+        "Swift uses ARC; ownership-oriented profiles do not disable it",
+        "The high template targets UDP/binary but keeps UDP disabled until app-owned authenticated key provisioning, full socket integration, and deployed abuse/performance gates are validated"
+      ],
+      "validation": [
+        "swift build",
+        "swift test --filter GameServerTests",
+        "swift test --filter realtimeFixedStep",
+        "coopSessionReconnect tests cover action denial, recovery, expiry, abandonment, and remaining-player behavior"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-realtime",
+      "name": "Pearfy game server realtime interest management",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Optional bounded spatial index, revision-consistent snapshots and AOI state-reconciliation deltas",
+      "requires": [
+        "gameserver"
+      ],
+      "products": [
+        "PearfyGameServerRealtime"
+      ],
+      "capabilities": [
+        "Bounded spatial cell index with entity, per-entity byte and aggregate state-byte ceilings",
+        "Square-area-of-interest queries with bounded radius and candidate scan work",
+        "Stable UUID ordering and paginated entity snapshots with byte and item response ceilings",
+        "Bounded upsert/remove deltas reconciled against a capped prior visible-ID set",
+        "Delta pages carry base/current world revisions and invalidate on concurrent mutation",
+        "World-revision cursors reject page continuation after concurrent state mutation",
+        "Monotonic entity revisions and explicit overload/configuration errors"
+      ],
+      "configurationChecks": [
+        "Configure cell size and maximum interest radius in application-owned integer world units",
+        "Set entity count, per-entity bytes, total state bytes, query candidate and page limits for the zone",
+        "If world revision changes during pagination, restart from offset zero using the new revision",
+        "For deltas, preserve the original prior visible-ID set and base revision until all pages are applied",
+        "Keep this query API outside the simulation tick and serialize/copy only the returned page"
+      ],
+      "skill": "pearfy-gameserver-realtime",
+      "skillVersion": "1.1.0",
+      "references": [
+        "docs/GAMESERVER.md",
+        "roadmap/gameserver/01-MODULOS-E-FASES.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-realtime",
+        "pearfy remove gameserver-realtime"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerRealtime/GameRealtimeInterestManager.swift"
+      ],
+      "restrictions": [
+        "Spatial units and game-specific authorization are application-defined",
+        "AOI deltas reconcile current state but are not a domain event log, transport replication protocol, physics or anti-cheat",
+        "The manager is single-process and does not persist or transfer entity authority across replicas"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerRealtime",
+        "swift test --filter realtimeInterest"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-transport",
+      "name": "Pearfy game server transport",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Optional TLS WebSocket and authenticated encrypted UDP listeners with bounded admission, datagrams and rates",
+      "requires": [
+        "gameserver"
+      ],
+      "products": [
+        "PearfyGameServerTransport"
+      ],
+      "capabilities": [
+        "TLS 1.2+ WSS listener with application-owned async ticket/principal authorization",
+        "ChaCha20-Poly1305 UDP codec with session/direction-separated HKDF keys, authenticated sequence numbers and replay window",
+        "Bounded UDP session registry and datagrams; global pre-authentication work cap plus per-session rolling rate enforcement after AEAD/replay validation",
+        "Optional ticket-authenticated UDP admission generates a fresh per-player channel ID/key and registers only the validated principal",
+        "Bounded connection admission, frame size and aggregate inbound buffering budget",
+        "Bounded per-connection inbound frames and message rate with idle read timeout",
+        "Binary and text WebSocket message delivery to an authoritative application callback",
+        "Connection close and listener lifecycle management"
+      ],
+      "configurationChecks": [
+        "Configure a trusted certificate chain and matching private key",
+        "Authorize the bearer ticket and return a session/player/protocol principal before the upgrade",
+        "Keep the authoritative message callback bounded and return at most one bounded response per message",
+        "Set connection, frame, aggregate buffering, rate and idle-timeout limits for the deployment",
+        "Use GameServerUDPAdmissionManager to authenticate a ticket, generate a fresh channel secret and register the server codec; return the secret only over the confidential authenticated control channel",
+        "Revoke the generated channel on ticket expiry or revocation",
+        "Set maximum datagram, aggregate buffer and global/per-session packet-rate limits; use GameServerUDPConfiguration.maximumPayloadBytes"
+      ],
+      "skill": "pearfy-gameserver-transport",
+      "skillVersion": "1.6.0",
+      "references": [
+        "docs/GAMESERVER.md",
+        "roadmap/gameserver/01-MODULOS-E-FASES.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-transport",
+        "pearfy remove gameserver-transport"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerTransport/GameServerWebSocketGateway.swift",
+        "Sources/PearfyGameServerTransport/GameServerSecureDatagrams.swift",
+        "Sources/PearfyGameServerTransport/GameServerUDPServer.swift",
+        "Sources/PearfyGameServerTransport/GameServerUDPAdmission.swift"
+      ],
+      "restrictions": [
+        "The admission helper authenticates tickets and creates fresh per-player channel keys; the app must return the key over an authenticated confidential control channel",
+        "Integration/GameServerUDPInterop/run.sh validates TLS Join credential delivery, the PearfyNetwork client against the live server socket, channel revocation, and independent burst budgets; Agones deployment and target-hardware abuse/performance validation remain pending",
+        "Application callback owns ticket expiry, revocation, session/player binding and game rules",
+        "Listener does not implement game simulation, automatic reconnect, snapshot replication, or distributed admission"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerTransport",
+        "swift test --filter gameServerWebSocket",
+        "swift test --filter secureGameServerUDPServerDispatchesEncryptedPacketsAndRespondsToSender",
+        "swift test --filter secureGameServer",
+        "Integration/GameServerUDPInterop/run.sh"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-grpc",
+      "name": "Pearfy game server gRPC control plane",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Optional TLS gRPC unary control plane for matchmaking and game-session callbacks",
+      "requires": [
+        "gameserver"
+      ],
+      "products": [
+        "PearfyGameServerGRPC"
+      ],
+      "capabilities": [
+        "Versioned protobuf unary methods for FindGame, CreateRoom, Join and Leave",
+        "TLS with required ALPN and application-owned bearer ticket authorization",
+        "Hard limits for message bytes, accepted connections, concurrent streams and aggregate in-flight payload budget",
+        "Application-owned async callbacks for matchmaking/session policy and binary payloads"
+      ],
+      "configurationChecks": [
+        "Provide a readable PEM certificate chain and matching PEM private key",
+        "Validate bearer tickets and session/player/protocol binding in the authorization callback",
+        "Decode and validate application payloads in the dispatch callback; never log bearer credentials or payloads",
+        "Configure connection, stream, message and aggregate in-flight payload limits for the deployment"
+      ],
+      "skill": "pearfy-gameserver-grpc",
+      "skillVersion": "1.0.0",
+      "references": [
+        "docs/GAMESERVER.md",
+        "roadmap/gameserver/05-GRPC-CONTROL.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-grpc",
+        "pearfy remove gameserver-grpc"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerGRPC/GameServerGRPCServer.swift",
+        "Sources/PearfyGameServerGRPC/Protos/control_messages.proto",
+        "Sources/PearfyGameServerGRPC/Protos/matchmaking.proto",
+        "Sources/PearfyGameServerGRPC/Protos/game_session.proto"
+      ],
+      "restrictions": [
+        "Control payload schemas and authoritative game rules remain application-owned",
+        "Uses gRPC Swift 2 APIs available from macOS 15 and iOS 18; dedicated Linux servers are supported by the POSIX transport",
+        "This control plane does not implement gameplay simulation or secure UDP"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerGRPC",
+        "swift test --filter gameServerGRPCUnaryControl"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-agones",
+      "name": "Pearfy game server Agones SDK integration",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Optional Agones sidecar lifecycle and external mTLS Fleet allocator clients for dedicated game server processes",
+      "requires": [
+        "gameserver",
+        "cloud"
+      ],
+      "products": [
+        "PearfyGameServerAgones"
+      ],
+      "capabilities": [
+        "Reads the dynamic AGONES_SDK_HTTP_PORT without hard-coded deployment assumptions",
+        "Bounded outbound CloudHTTPClient requests to the loopback Agones SDK sidecar",
+        "Ready, health heartbeat, allocate, shutdown and bounded GameServer status snapshot",
+        "Explicit lifecycle transitions and shutdown heartbeat drain",
+        "External Agones Allocator gRPC client with mTLS, trusted server CA, bounded payloads, deadline and single-attempt allocation"
+      ],
+      "configurationChecks": [
+        "Install the Agones SDK sidecar and configure AGONES_SDK_HTTP_PORT",
+        "Call ready only after application gameplay initialization completes",
+        "Configure allocator client certificate, private key, trusted server CA, endpoint, namespace and DNS certificate name",
+        "Use AgonesAllocatorClient for Fleet allocation; SDK Allocate is an explicit application-owned path and allocation calls are not retried automatically"
+      ],
+      "skill": "pearfy-gameserver-agones",
+      "skillVersion": "1.1.0",
+      "references": [
+        "docs/GAMESERVER.md",
+        "roadmap/gameserver/01-MODULOS-E-FASES.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-agones",
+        "pearfy remove gameserver-agones"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerAgones/AgonesSDKLifecycle.swift",
+        "Sources/PearfyGameServerAgones/AgonesAllocator.swift",
+        "Sources/PearfyGameServerAgones/Protos/allocator.proto"
+      ],
+      "restrictions": [
+        "The allocator endpoint requires mutual TLS and a client certificate allowlisted by Agones; IP endpoints need a matching DNS serverName for certificate verification",
+        "The adapter does not use Kubernetes credentials, deploy Fleets, implement global matchmaking, deployment manifests, or cross-cluster allocation policies",
+        "Sidecar startup and state changes are asynchronous; readiness calls are not proof of fleet allocation consistency"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerAgones",
+        "swift test --filter agonesLifecycle",
+        "swift test --filter agonesAllocator"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-redis-recovery",
+      "name": "Pearfy game server Redis recovery",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Optional bounded Redis Streams journal and checkpoint adapter for game state recovery",
+      "requires": [
+        "gameserver",
+        "redis"
+      ],
+      "products": [
+        "PearfyGameServerRedisRecovery"
+      ],
+      "capabilities": [
+        "Exclusive expiring session leases with monotonically increasing fencing epochs",
+        "Atomic lease checks on event append and checkpoint writes reject expired or stale owners",
+        "Session/epoch fenced event appends",
+        "RedisDurableGameCommandSession performs write-ahead durable commit for bounded discrete commands and applies state only after append acknowledgment",
+        "Durable command recovery replays a bounded journal suffix through the deterministic reducer and verifies result-state digests",
+        "Async deterministic reducers hold per-session backpressure across actor suspension before appending the next revision",
+        "RedisDurableGameTickSession write-ahead commits bounded contiguous batches of authoritative movement, NPC, timer and inventory transitions with recorded RNG draws",
+        "Tick-batch replay validates contiguous simulation ticks and deterministic resulting-state digests before recovery completes",
+        "RedisDurableGameTickBatchQueue bounds retained batch count/bytes, coalesces writer wake-ups and preserves the head batch after append failure",
+        "RedisDurableGameTickWriteAheadBridge stages synchronously from fixed-step callbacks and commits off tick before publish/ack",
+        "The write-ahead bridge closes staging on failure, retries the same batch ID, rejects a stale receipt cursor before publication and exposes fixed-cardinality pending/commit metrics",
+        "RedisDurableGameCoopSession write-ahead commits bounded co-op lifecycle, objective transitions, server-authored NPC scheduling and seeded deterministic decisions while preserving per-player snapshot visibility",
+        "Append uncertainty is retryable by command ID; one unresolved commit per session applies explicit backpressure",
+        "State middleware checkpoints by event count or after an elapsed interval when the next update arrives",
+        "Exactly capped Redis Streams journal with explicit backpressure before uncheckpointed events are evicted",
+        "Versioned JSON checkpoint storage and event replay read",
+        "Optional periodic checkpoint scheduler captures off tick with a byte ceiling and no overlapping writes",
+        "Checksummed 256 KiB Redis checkpoint chunks with atomic fenced manifest publication and legacy single-value restore",
+        "Recovery scans journal in byte-aware bounded XRANGE pages and validates encoded records before decoding",
+        "Fresh sessions are distinguished from missing/corrupt recovery metadata; oversized or partial checkpoints fail closed",
+        "Projected state revisions are monotonic per retained key; stale revisions are rejected before append and conflicting same-revision payloads fail closed",
+        "Credentials and transport state remain outside snapshots"
+      ],
+      "configurationChecks": [
+        "Acquire and renew a session lease before admitting commands; use a new owner UUID for each process lifetime",
+        "Start and stop RedisGameStateRecoveryStore with application lifecycle",
+        "Configure event-count cadence and use the async interval scheduler when appropriate",
+        "Choose Redis AOF/RDB/replication settings for the required RPO",
+        "Persist only authoritative events and checkpoints; never tickets or secrets"
+      ],
+      "skill": "pearfy-gameserver-redis-recovery",
+      "skillVersion": "1.7.0",
+      "references": [
+        "roadmap/gameserver/03-RECUPERACAO-REDIS.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-redis-recovery",
+        "pearfy remove gameserver-redis-recovery",
+        "pearfy gameserver recovery --store redis [--apply] [--output <file>]"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerRedisRecovery/RedisDurableGameCommandSession.swift",
+        "Sources/PearfyGameServerRedisRecovery/RedisDurableGameTickSession.swift",
+        "Sources/PearfyGameServerRedisRecovery/RedisDurableGameTickWriteAheadBridge.swift",
+        "Sources/PearfyGameServerRedisRecovery/RedisDurableGameCoopSession.swift",
+        "Sources/PearfyGameServerRedisRecovery/RedisGameStateRecoveryStore.swift",
+        "Sources/PearfyGameServerRedisRecovery/GameStateRecoveryCheckpointScheduler.swift",
+        "Sources/PearfyGameServer/GameServerModules.swift",
+        "Sources/PearfyGameServer/GameServerProfiles.swift"
+      ],
+      "restrictions": [
+        "Redis durability and replication determine actual crash/failover RPO; Redis Streams alone do not provide zero data loss",
+        "Lease fencing rejects stale writers but does not place sessions, automatically replay state or migrate connected clients",
+        "Journal append and snapshot calls are outside the simulation tick and may add I/O latency",
+        "The direct in-memory nextDeterministicValue path is not journaled; use RedisDurableGameCoopSession.deterministicDecision for seeded decisions that must replay after restart",
+        "The scheduler does not append events, manage leases, apply replay, guarantee a final shutdown checkpoint, place sessions across nodes, or configure Redis persistence",
+        "Application capture closures must pair state with the exact durable journal sequence the checkpoint covers"
+      ],
+      "validation": [
+        "swift build",
+        "swift test --filter GameServerTests",
+        "swift test --filter durableTickWriteAheadBridge",
+        "redisRecoveryCheckpointScheduler tests cover periodic cadence, overlap rejection, and byte ceiling",
+        "redisRecoveryMiddlewareElapsedCheckpointRoundTripsWithRedis validates elapsed cadence against Redis when configured",
+        "Redis service integration test when Redis is available",
+        "redisRecoverySurvivesProcessAndRedisRestartWithAOF in separate write/recover phases around a forced Redis restart with AOF enabled"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-postgres",
+      "name": "Pearfy game server PostgreSQL state middleware",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Optional bounded asynchronous PostgreSQL persistence sink for projected game state",
+      "requires": [
+        "gameserver",
+        "postgres"
+      ],
+      "products": [
+        "PearfyGameServerPostgres"
+      ],
+      "capabilities": [
+        "Independent manager middleware worker writes state outside gameplay tick tasks",
+        "Bound SQL parameters, validated table identifiers and a versioned additive schema migration",
+        "Revision-conditional upsert prevents an older state revision replacing a newer one"
+      ],
+      "configurationChecks": [
+        "Start the PearfyPostgresDatabase before publishing state",
+        "Apply the module migration before startup and grant the runtime database role only INSERT/UPDATE privileges",
+        "Publish allowlisted projections only; this sink is best-effort and queue overflow can replace pending updates"
+      ],
+      "skill": "pearfy-gameserver-postgres",
+      "skillVersion": "1.0.0",
+      "references": [
+        "docs/GAMESERVER.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-postgres",
+        "pearfy remove gameserver-postgres"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerPostgres/PostgresGameServerStateMiddleware.swift"
+      ],
+      "restrictions": [
+        "The adapter stores latest state per namespace/key, not a complete event log",
+        "Database lifecycle, pooling, schema ownership and deployment migrations remain application responsibilities",
+        "Persistence occurs asynchronously and is not a durable-commit acknowledgment to the game tick"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerPostgres",
+        "swift test --filter postgresGameStateMiddleware"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-matchmaking-postgres",
+      "name": "Pearfy PostgreSQL distributed game matchmaking",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Optional bounded PostgreSQL queue with cross-replica atomic ticket claims and acknowledged assignments",
+      "requires": [
+        "gameserver",
+        "postgres"
+      ],
+      "products": [
+        "PearfyGameServerMatchmakingPostgres"
+      ],
+      "capabilities": [
+        "Bounded queue entry/player limits with per-queue transactional serialization",
+        "Cross-replica player uniqueness, party-preserving deterministic matching and cancel/expiry",
+        "Rotating bounded candidate scan prevents permanent head-page starvation while preserving age order inside each scan window",
+        "At-least-once assignment delivery with stable IDs until application acknowledgment",
+        "Bounded async reconciliation calls the app allocator outside database transactions and acknowledges only successful assignments"
+      ],
+      "configurationChecks": [
+        "Apply the versioned queue schema migration before game-server startup",
+        "Use identical queue IDs, bounds and matchmaking policy on all replicas",
+        "Validate player identity, mode, region and skill server-side before enqueue"
+      ],
+      "skill": "pearfy-gameserver-matchmaking-postgres",
+      "skillVersion": "1.1.0",
+      "references": [
+        "roadmap/gameserver/01-MODULOS-E-Fases.md",
+        "docs/GAMESERVER.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-matchmaking-postgres",
+        "pearfy remove gameserver-matchmaking-postgres"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerMatchmakingPostgres/PostgresGameMatchmakingQueue.swift"
+      ],
+      "restrictions": [
+        "PostgreSQL serializes mutations per queue ID; this is a matchmaking control-plane store, not a realtime tick dependency",
+        "Pending assignments can be delivered more than once and downstream assignment handling must be idempotent",
+        "The application owns assignment reconciliation, retention, server allocation and session authority leases"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerMatchmakingPostgres",
+        "PostgreSQL integration test with two queue replicas",
+        "PostgreSQL candidate-scan integration confirms compatible tickets beyond the candidate cap progress on the next scan"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-world-postgres",
+      "name": "Pearfy PostgreSQL distributed game world",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Optional bounded zone leases, fencing and entity-state handoff for replicated game worlds",
+      "requires": [
+        "gameserver",
+        "postgres"
+      ],
+      "products": [
+        "PearfyGameServerWorldPostgres"
+      ],
+      "capabilities": [
+        "Cross-replica exclusive expiring zone leases with monotonically increasing fencing epochs",
+        "Transactional entity create/update/remove and two-zone handoff with deterministic lock ordering",
+        "Hard limits for active zones, per-zone entity count and state bytes with bounded paginated reads",
+        "Empty-zone retirement preserves epoch history while freeing an active-zone slot"
+      ],
+      "configurationChecks": [
+        "Apply the versioned world migration before startup and use identical bounds across replicas",
+        "Acquire and renew each zone lease before accepting authoritative writes; stop mutations when renewal fails",
+        "Keep SQL operations outside simulation ticks and handle entity-transfer notifications in the application"
+      ],
+      "skill": "pearfy-gameserver-world-postgres",
+      "skillVersion": "1.0.0",
+      "references": [
+        "roadmap/gameserver/01-MODULOS-E-Fases.md",
+        "docs/GAMESERVER.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-world-postgres",
+        "pearfy remove gameserver-world-postgres"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerWorldPostgres/PostgresGameWorldLeaseStore.swift"
+      ],
+      "restrictions": [
+        "PostgreSQL transactions serialize world control-plane operations and are not suitable for per-frame persistence",
+        "The adapter does not implement simulation, interest management, snapshots/deltas, client migration, automatic lease renewal or multi-region recovery",
+        "Database failover and availability determine zone-lease availability"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerWorldPostgres",
+        "PostgreSQL integration test across two store replicas"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-devkit",
+      "name": "Pearfy game server DevKit integration",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Optional asynchronous game-state middleware registry and bearer-protected DevKit state viewer",
+      "requires": [
+        "gameserver",
+        "devkit-ui"
+      ],
+      "products": [
+        "PearfyGameServerDevKit"
+      ],
+      "capabilities": [
+        "Process-wide GameServerStateManager singleton with isolated instance support",
+        "Nonblocking item- and byte-bounded mailboxes for ingress and each async middleware worker",
+        "Independent bounded async workers for Redis, optional PostgreSQL adapter and app-owned middleware",
+        "Bounded current-state snapshots and paginated DevKit UI viewing",
+        "Middleware errors counted without logging payloads or error text"
+      ],
+      "configurationChecks": [
+        "Start GameServerStateManager with the middleware list before publishing",
+        "Use allowlisted state projections; never publish credentials, tickets, request bodies, SQL bindings or sockets",
+        "Install PearfyDevKitUI with an explicit bearer token and compose PearfyGameServerDevKit.source(manager:merging:)"
+      ],
+      "skill": "pearfy-gameserver-devkit",
+      "skillVersion": "1.0.1",
+      "references": [
+        "docs/GAMESERVER.md",
+        ".agents/skills/pearfy-devkit/references/dashboard-and-data-sources.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-devkit",
+        "pearfy remove gameserver-devkit"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServer/GameServerStateManager.swift",
+        "Sources/PearfyGameServerDevKit/GameServerDevKit.swift",
+        "Sources/PearfyDevKitUI/DevKitUI.swift"
+      ],
+      "restrictions": [
+        "State history is bounded and newest entries may replace pending records under pressure; this is observability and async persistence, not durable-commit acknowledgement",
+        "Each middleware owns retry, database transactions and external service lifecycle",
+        "DevKit exposes only 1 KiB base64 previews per state and requires its bearer token; the operator must ensure state projections are safe to inspect"
+      ],
+      "validation": [
+        "swift build",
+        "swift test --filter GameServerTests",
+        "swift test --filter DevKit"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-npc-learn",
+      "version": "1.0.0",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Optional event-driven NPC decisions using bounded typed Jev choices",
+      "requires": [
+        "gameserver",
+        "ai"
+      ],
+      "products": [
+        "PearfyGameServerNPCLearn"
+      ],
+      "capabilities": [
+        "Finite allowlisted NPC action selection through the PearfyAI Jev decision client",
+        "Bounded context bytes, candidate count and concurrent decision calls",
+        "Confidence threshold, safe fallback and conversion to a bounded versioned GameCoopScheduledNPCAction"
+      ],
+      "configurationChecks": [
+        "Keep Jev API credentials in server-side configuration",
+        "Call decisions from an async worker, outside simulation ticks",
+        "Validate and schedule selected actions using authoritative GameServer rules"
+      ],
+      "skill": "pearfy-gameserver-npc-learn",
+      "skillVersion": "1.0.0",
+      "references": [
+        "docs/GAMESERVER.md",
+        ".agents/skills/pearfy-ai/references/runtime-client.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-npc-learn",
+        "pearfy remove gameserver-npc-learn"
+      ],
+      "contracts": [
+        "Sources/PearfyAI/JevDecisionClient.swift",
+        "Sources/PearfyGameServerNPCLearn/NPCLearn.swift"
+      ],
+      "restrictions": [
+        "No live decision call belongs in a simulation tick; request saturation is rejected and provider errors use the configured safe fallback",
+        "Jev output is only an allowlisted action identifier and never mutates authoritative world state",
+        "This module does not fine-tune models or persist player memory; learning storage and privacy rules remain app-owned"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerNPCLearn",
+        "swift test --filter NPCLearnTests",
+        "GameCoopSession scheduler integration tests"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-turn-based",
+      "name": "Pearfy GameServer turn-based sessions",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Async command sessions with append-before-publish, idempotent storage contract and deterministic replay",
+      "requires": [
+        "gameserver"
+      ],
+      "products": [
+        "PearfyGameServerTurnBased"
+      ],
+      "capabilities": [
+        "Bounded command/session state with monotonic event sequence",
+        "Atomic store compare-and-append protocol with command ID, player and payload idempotency",
+        "Append-before-publish so failed storage writes do not advance in-memory state",
+        "Bounded checkpoint replay verifies each reducer result and detects gaps or duplicate IDs"
+      ],
+      "configurationChecks": [
+        "Implement the store contract with a transaction or equivalent atomic compare-and-append operation",
+        "Use a deterministic reducer that validates player authorization, turn and game-specific rules",
+        "Call submit from async command handling, outside latency-sensitive simulation ticks"
+      ],
+      "skill": "pearfy-gameserver-turn-based",
+      "skillVersion": "1.0.0",
+      "references": [
+        "docs/GAMESERVER.md",
+        "roadmap/gameserver/01-MODULOS-E-Fases.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-turn-based",
+        "pearfy remove gameserver-turn-based",
+        "pearfy gameserver recipe turn-based"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerTurnBased/TurnBasedSession.swift"
+      ],
+      "restrictions": [
+        "PostgreSQL and Redis command stores are separate optional adapters",
+        "The complete bounded event history is retained in each checkpoint; this module is for finite sessions, not unbounded event streams",
+        "The application owns authentication, authorization, command schema, turn rules and safe event delivery"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerTurnBased",
+        "swift test --filter GameServerTurnBasedTests",
+        "swift test --filter GameServerTests"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-turn-based-redis",
+      "name": "Pearfy GameServer turn-based Redis store",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Fenced Redis Streams adapter for bounded turn-based command sessions",
+      "requires": [
+        "gameserver-turn-based",
+        "gameserver-redis-recovery"
+      ],
+      "products": [
+        "PearfyGameServerTurnBasedRedis"
+      ],
+      "capabilities": [
+        "Uses the Redis recovery fencing lease and append journal",
+        "Recovers a bounded checkpoint and contiguous journal suffix",
+        "Persists the complete finite event history in checkpoints before trimming stream prefixes",
+        "Rejects stale epochs, sequence gaps, duplicate command identities and configured capacity overflow"
+      ],
+      "configurationChecks": [
+        "Acquire a session lease before opening the adapter and keep it renewed for the adapter lifetime",
+        "Call saveCheckpoint from an async maintenance or shutdown task to compact the Redis stream",
+        "Align adapter bounds with GameTurnBasedSession and Redis recovery configuration"
+      ],
+      "skill": "pearfy-gameserver-turn-based-redis",
+      "skillVersion": "1.0.0",
+      "references": [
+        "docs/GAMESERVER.md",
+        "roadmap/gameserver/01-MODULOS-E-Fases.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-turn-based-redis",
+        "pearfy remove gameserver-turn-based-redis",
+        "pearfy gameserver recipe turn-based"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerTurnBasedRedis/RedisGameTurnBasedCommandStore.swift"
+      ],
+      "restrictions": [
+        "This is a finite-session store, not an unbounded event log; checkpoint history remains bounded",
+        "Redis durability and recovery point depend on the deployment's persistence and replication settings",
+        "Lease acquisition, renewal and graceful release remain application lifecycle responsibilities"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerTurnBasedRedis",
+        "swift test --filter GameServerTurnBasedRedisTests",
+        "Redis integration test with PEARFY_TEST_GAME_REDIS_HOST configured"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-turn-based-postgres",
+      "name": "Pearfy GameServer turn-based PostgreSQL store",
+      "version": "workspace",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Transactional PostgreSQL event store for bounded turn-based and point-and-click sessions",
+      "requires": [
+        "gameserver-turn-based",
+        "postgres"
+      ],
+      "products": [
+        "PearfyGameServerTurnBasedPostgres"
+      ],
+      "capabilities": [
+        "Atomic session revision and event commit in one PostgreSQL transaction",
+        "Cross-replica per-session serialization with PostgreSQL transaction advisory lock",
+        "Command ID unique constraint and exact player/payload retry validation",
+        "Bounded event, state, command, encoded record and total history storage"
+      ],
+      "configurationChecks": [
+        "Apply the versioned PostgresGameTurnBasedCommandStore migration before accepting commands",
+        "Use one shared PostgreSQL database for every session replica",
+        "Configure adapter bounds consistently with GameTurnBasedSession bounds"
+      ],
+      "skill": "pearfy-gameserver-turn-based-postgres",
+      "skillVersion": "1.0.0",
+      "references": [
+        "docs/GAMESERVER.md",
+        "roadmap/gameserver/01-MODULOS-E-Fases.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-turn-based-postgres",
+        "pearfy remove gameserver-turn-based-postgres",
+        "pearfy gameserver recipe turn-based"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerTurnBasedPostgres/PostgresGameTurnBasedCommandStore.swift"
+      ],
+      "restrictions": [
+        "PostgreSQL must be configured and available; integration durability is not inferred from compilation or stub tests",
+        "This store retains the complete event history and is bounded for finite sessions, not an unbounded journal",
+        "Unknown transaction outcomes must be retried with the same command ID and identical player and payload"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerTurnBasedPostgres",
+        "swift test --filter PostgresGameTurnBasedTests",
+        "PostgreSQL integration test with PEARFY_TEST_POSTGRES_* configured"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
+    },
+    {
+      "id": "gameserver-threat-director",
+      "version": "1.0.0",
+      "implementationStatus": "partial",
+      "available": true,
+      "summary": "Optional bounded deterministic threat scoring and allowlisted NPC action recommendations",
+      "requires": [
+        "gameserver"
+      ],
+      "products": [
+        "PearfyGameServerThreatDirector"
+      ],
+      "capabilities": [
+        "Integer weighted signals with pressure saturation, tick-based decay and threshold hysteresis",
+        "Seeded deterministic recommendations from finite action IDs with cooldowns",
+        "Bounded idempotency history and versioned checkpoint restore",
+        "Conversion to bounded server-authored GameCoopScheduledNPCAction payloads"
+      ],
+      "configurationChecks": [
+        "Keep threat signals server-authoritative and bounded; never use client claims as truth without validation",
+        "Call from a bounded event-driven worker outside latency-critical simulation ticks; the director performs no I/O or model call",
+        "Validate the recommended action against current world state before scheduling or execution"
+      ],
+      "skill": "pearfy-gameserver-threat-director",
+      "skillVersion": "1.0.0",
+      "references": [
+        "docs/GAMESERVER.md",
+        "roadmap/gameserver/01-MODULOS-E-FASES.md"
+      ],
+      "cliCommands": [
+        "pearfy add gameserver-threat-director",
+        "pearfy remove gameserver-threat-director"
+      ],
+      "contracts": [
+        "Sources/PearfyGameServerThreatDirector/ThreatDirector.swift"
+      ],
+      "restrictions": [
+        "Recommendations do not mutate world state or authenticate gameplay facts; application remains authoritative",
+        "The actor is not durable by itself; persist its bounded checkpoint through an application-owned state manager or recovery adapter",
+        "This rule-based module does not replace NPC animation/movement simulation or Jev decisions"
+      ],
+      "validation": [
+        "swift build --target PearfyGameServerThreatDirector",
+        "swift test --filter GameServerThreatDirectorTests"
+      ],
+      "mcpTools": [],
+      "introducedInSDK": null
     }
   ]
 }

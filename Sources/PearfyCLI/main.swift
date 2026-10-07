@@ -52,6 +52,9 @@ struct PearfyCLI {
                 projectRoot: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
             )
         }
+        if command == "gameserver" {
+            return try PearfyGameServerCommand.run(Array(arguments.dropFirst()))
+        }
         if command == "migrations" {
             return try await PearfyMigrationsCommand.run(
                 arguments: Array(arguments.dropFirst()),
@@ -186,6 +189,7 @@ struct PearfyCLI {
       pearfy guardian verify
       pearfy --version
       pearfy populate <inspect|profile|plan|preview|approve|run|status|verify|report> [options]
+      pearfy gameserver <modules|modes|template --mode <light|medium|high> [--output <file>]|recipe <turn-based|fps|friendslop|mmo|rooms|dedicated> [--output <file>]|recovery --store redis [--apply] [--output <file>]>
       pearfy migrations <generate|apply|import-java> [options]
       pearfy ai init [--client opencode]
       pearfy ai sync [--force]
@@ -203,6 +207,9 @@ struct PearfyCLI {
     `modules` lists available products and checks a generated project's selection.
     `guardian verify` executes the declared Swift build/test gates for the current package.
     `populate` plans and executes bounded synthetic PostgreSQL data runs.
+    `gameserver template` prints a starter profile as JSON; `--output` writes without replacing a file.
+    `gameserver recipe` prints a genre/server composition plan and application-owned validation gates.
+    `gameserver recovery` prints a secret-free Redis recovery plan; `--apply` selects the optional module and writes its config.
     `migrations generate` compiles a Pearfy SchemaIR model into an immutable SQL artifact; `apply` runs the catalog locally.
     `ai` initializes a Skills-first harness and synchronizes only installed module Skills.
     `ai mcp` enables dynamic tools only for an installed module that implements them.

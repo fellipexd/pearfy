@@ -31,6 +31,21 @@ let package = Package(
         .library(name: "PearfyObservability", targets: ["PearfyObservability"]),
         .library(name: "PearfyDevKitUI", targets: ["PearfyDevKitUI"]),
         .library(name: "PearfyGatewayLab", targets: ["PearfyGatewayLab"]),
+        .library(name: "PearfyGameServer", targets: ["PearfyGameServer"]),
+        .library(name: "PearfyGameServerRealtime", targets: ["PearfyGameServerRealtime"]),
+        .library(name: "PearfyGameServerTransport", targets: ["PearfyGameServerTransport"]),
+        .library(name: "PearfyGameServerGRPC", targets: ["PearfyGameServerGRPC"]),
+        .library(name: "PearfyGameServerAgones", targets: ["PearfyGameServerAgones"]),
+        .library(name: "PearfyGameServerPostgres", targets: ["PearfyGameServerPostgres"]),
+        .library(name: "PearfyGameServerMatchmakingPostgres", targets: ["PearfyGameServerMatchmakingPostgres"]),
+        .library(name: "PearfyGameServerWorldPostgres", targets: ["PearfyGameServerWorldPostgres"]),
+        .library(name: "PearfyGameServerRedisRecovery", targets: ["PearfyGameServerRedisRecovery"]),
+        .library(name: "PearfyGameServerDevKit", targets: ["PearfyGameServerDevKit"]),
+        .library(name: "PearfyGameServerNPCLearn", targets: ["PearfyGameServerNPCLearn"]),
+        .library(name: "PearfyGameServerTurnBased", targets: ["PearfyGameServerTurnBased"]),
+        .library(name: "PearfyGameServerTurnBasedPostgres", targets: ["PearfyGameServerTurnBasedPostgres"]),
+        .library(name: "PearfyGameServerTurnBasedRedis", targets: ["PearfyGameServerTurnBasedRedis"]),
+        .library(name: "PearfyGameServerThreatDirector", targets: ["PearfyGameServerThreatDirector"]),
         .library(name: "PearfyTesting", targets: ["PearfyTesting"]),
         .library(name: "PearfyMacros", targets: ["PearfyMacros"]),
         .plugin(name: "PearfyDiscoveryPlugin", targets: ["PearfyDiscoveryPlugin"]),
@@ -41,9 +56,13 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.29.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
         .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.21.0"),
         .package(url: "https://github.com/swift-server/RediStack.git", from: "1.6.2"),
+        .package(url: "https://github.com/grpc/grpc-swift-2.git", from: "2.3.0"),
+        .package(url: "https://github.com/grpc/grpc-swift-nio-transport.git", from: "2.0.0"),
+        .package(url: "https://github.com/grpc/grpc-swift-protobuf.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.3")
     ],
     targets: [
@@ -129,6 +148,79 @@ let package = Package(
         ),
         .target(name: "PearfyGatewayLab"),
         .target(
+            name: "PearfyGameServer",
+            dependencies: [.product(name: "Crypto", package: "swift-crypto")]
+        ),
+        .target(name: "PearfyGameServerRealtime", dependencies: ["PearfyGameServer"]),
+        .target(
+            name: "PearfyGameServerTransport",
+            dependencies: [
+                "PearfyGameServer",
+                "PearfyContext",
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOConcurrencyHelpers", package: "swift-nio"),
+                .product(name: "NIOHTTP1", package: "swift-nio"),
+                .product(name: "NIOPosix", package: "swift-nio"),
+                .product(name: "NIOWebSocket", package: "swift-nio"),
+                .product(name: "NIOSSL", package: "swift-nio-ssl"),
+                .product(name: "Crypto", package: "swift-crypto")
+            ]
+        ),
+        .target(
+            name: "PearfyGameServerGRPC",
+            dependencies: [
+                "PearfyGameServer",
+                .product(name: "GRPCCore", package: "grpc-swift-2"),
+                .product(name: "GRPCNIOTransportHTTP2Posix", package: "grpc-swift-nio-transport"),
+                .product(name: "GRPCProtobuf", package: "grpc-swift-protobuf")
+            ],
+            sources: ["GameServerGRPCServer.swift", "Protos"],
+            plugins: [.plugin(name: "GRPCProtobufGenerator", package: "grpc-swift-protobuf")]
+        ),
+        .target(
+            name: "PearfyGameServerAgones",
+            dependencies: [
+                "PearfyGameServer", "PearfyCloud", "PearfyContext", "PearfyDI", "PearfyConfiguration", "PearfyCore",
+                .product(name: "GRPCCore", package: "grpc-swift-2"),
+                .product(name: "GRPCNIOTransportHTTP2Posix", package: "grpc-swift-nio-transport"),
+                .product(name: "GRPCProtobuf", package: "grpc-swift-protobuf")
+            ],
+            sources: ["AgonesSDKLifecycle.swift", "AgonesAllocator.swift", "Protos"],
+            plugins: [.plugin(name: "GRPCProtobufGenerator", package: "grpc-swift-protobuf")]
+        ),
+        .target(
+            name: "PearfyGameServerPostgres",
+            dependencies: ["PearfyGameServer", "PearfyData"]
+        ),
+        .target(
+            name: "PearfyGameServerMatchmakingPostgres",
+            dependencies: ["PearfyGameServer", "PearfyData"]
+        ),
+        .target(
+            name: "PearfyGameServerWorldPostgres",
+            dependencies: ["PearfyGameServer", "PearfyData"]
+        ),
+        .target(
+            name: "PearfyGameServerRedisRecovery",
+            dependencies: [
+                "PearfyGameServer",
+                .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "RediStack", package: "RediStack"),
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOPosix", package: "swift-nio"),
+                .product(name: "NIOSSL", package: "swift-nio-ssl")
+            ]
+        ),
+        .target(
+            name: "PearfyGameServerDevKit",
+            dependencies: ["PearfyGameServer", "PearfyDevKitUI", "PearfyWeb"]
+        ),
+        .target(name: "PearfyGameServerNPCLearn", dependencies: ["PearfyGameServer", "PearfyAI"]),
+        .target(name: "PearfyGameServerTurnBased", dependencies: ["PearfyGameServer"]),
+        .target(name: "PearfyGameServerTurnBasedPostgres", dependencies: ["PearfyGameServerTurnBased", "PearfyData"]),
+        .target(name: "PearfyGameServerTurnBasedRedis", dependencies: ["PearfyGameServerTurnBased", "PearfyGameServerRedisRecovery"]),
+        .target(name: "PearfyGameServerThreatDirector", dependencies: ["PearfyGameServer"]),
+        .target(
             name: "PearfyRedis",
             dependencies: [
                 "PearfyCache",
@@ -201,6 +293,7 @@ let package = Package(
                 "PearfyPopulateCLI",
                 "PearfyDevKitUI",
                 "PearfyGatewayLab",
+                "PearfyGameServer",
                 "PearfyData",
                 "PearfyPostgres",
                 .product(name: "Crypto", package: "swift-crypto")
@@ -243,6 +336,30 @@ let package = Package(
                 "PearfyObservability",
                 "PearfyDevKitUI",
                 "PearfyGatewayLab",
+                "PearfyGameServer",
+                "PearfyGameServerRealtime",
+                "PearfyGameServerRedisRecovery",
+                "PearfyGameServerDevKit",
+                "PearfyGameServerNPCLearn",
+                "PearfyGameServerTurnBased",
+                "PearfyGameServerTurnBasedPostgres",
+                "PearfyGameServerTurnBasedRedis",
+                "PearfyGameServerThreatDirector",
+                "PearfyGameServerTransport",
+                "PearfyGameServerGRPC",
+                "PearfyGameServerAgones",
+                "PearfyGameServerPostgres",
+                "PearfyGameServerMatchmakingPostgres",
+                "PearfyGameServerWorldPostgres",
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOHTTP1", package: "swift-nio"),
+                .product(name: "NIOPosix", package: "swift-nio"),
+                .product(name: "NIOWebSocket", package: "swift-nio"),
+                .product(name: "NIOSSL", package: "swift-nio-ssl"),
+                .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "GRPCCore", package: "grpc-swift-2"),
+                .product(name: "GRPCNIOTransportHTTP2Posix", package: "grpc-swift-nio-transport"),
+                .product(name: "GRPCProtobuf", package: "grpc-swift-protobuf"),
                 "PearfyTesting",
                 "PearfyMacros",
                 "PearfyCLIKit"

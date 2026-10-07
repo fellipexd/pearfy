@@ -3,6 +3,7 @@ import PearfyData
 
 public enum SocialActorKind: String, Codable, Sendable {
     case person
+    case npc
     case page
     case community
 }

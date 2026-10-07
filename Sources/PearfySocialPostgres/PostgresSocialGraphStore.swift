@@ -293,6 +293,15 @@ public struct PostgresSocialGraphStore: SocialGraphStore, Sendable {
             )
             """),
             down: SQLQuery(unsafeSQL: "DROP TABLE IF EXISTS \(blocks)")
+        ),
+        SQLMigration(
+            id: "social-v1-05-npc-actor-kind",
+            up: SQLQuery(unsafeSQL: """
+            ALTER TABLE \(actors) DROP CONSTRAINT IF EXISTS pearfy_social_actors_actor_kind_check;
+            ALTER TABLE \(actors) ADD CONSTRAINT pearfy_social_actors_actor_kind_check
+                CHECK (actor_kind IN ('person', 'npc', 'page', 'community'));
+            """),
+            down: nil
         )
     ]
 }

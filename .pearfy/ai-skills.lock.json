@@ -2,7 +2,7 @@
   "assets" : {
     "agents" : {
       "files" : {
-        "pearfy-architect.md" : "e91e4820d927d462fc8119cea9a6af69dd2b41d64209a0a6312054fa9b1415cc",
+        "pearfy-architect.md" : "b9e589d0d91af8c902a244f8f90145c7457bed67b0fb597c09694f8b1f059add",
         "pearfy-builder.md" : "f76a9666138624a1e00d8ab232243359e09a486d4db9f76b76c2701310cdc225",
         "pearfy-connect.md" : "f46f7e92144935e6ee0ca4dd58459fecaca9bfb067537584d2a6cd0f1580b806",
         "pearfy-data.md" : "1d4bfd007d5361ed4a1dfd446bcbe0d002235eed27139493cb5b20be0fe2d70e",
@@ -17,12 +17,12 @@
     },
     "skills\/pearfy-ai" : {
       "files" : {
-        "SKILL.md" : "3ecf33e267b75a8214c6cc53e5a63ceefa89ce3d22468c2735a07e17b25fa981",
-        "references\/runtime-client.md" : "9579b84a549a9aaa1ec1619a5228a7c775b902d887aa84bdbf95805911eb61b0"
+        "SKILL.md" : "b3da85a21a2cbff4ab384c45965a10bf66e998a5c4da2badec3684963d84cf3a",
+        "references\/runtime-client.md" : "53ce1715ce78bf8251e14dd03255b592645ddcb3ea8d85f0da28928b7620df53"
       },
       "kind" : "skill",
       "moduleVersion" : "workspace",
-      "version" : "1.0.0"
+      "version" : "1.1.0"
     },
     "skills\/pearfy-cache" : {
       "files" : {
@@ -72,8 +72,137 @@
     },
     "skills\/pearfy-devkit" : {
       "files" : {
-        "SKILL.md" : "73075f1cbca5457d682116382a3baa3cdd077d8f2b0ce9f7f171c8dff312ce16",
-        "references\/dashboard-and-data-sources.md" : "a8307189679e2be7d6aa70dff5aa484417a1036a050b284993525bab4233ea83"
+        "SKILL.md" : "262ccfc948b793f1bc8a2bfa980103fe061ea1c33e45cf88569cd3c8bb63c9bd",
+        "references\/dashboard-and-data-sources.md" : "f24f96f783bda173d2dc4574b1688fc6c413d9c2d789227b8a34a4f031da863a"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-gameserver" : {
+      "files" : {
+        "SKILL.md" : "9cb630c9be654a74c93fc72e223fc83f5c99d29920dd3cad45ab791d52c5833a"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.6.0"
+    },
+    "skills\/pearfy-gameserver-agones" : {
+      "files" : {
+        "SKILL.md" : "45374850799212550cab1be094b1eab33d7abccb614560a2e7ec9e1134323e57"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.1.0"
+    },
+    "skills\/pearfy-gameserver-devkit" : {
+      "files" : {
+        "SKILL.md" : "b70540095cdb65b5e99deaf95f70eaaeb1ae4f1398832b745c360bed78880f64"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.1"
+    },
+    "skills\/pearfy-gameserver-grpc" : {
+      "files" : {
+        "SKILL.md" : "2c4a26593392b140d910f45a2e2207517bb19b1cf4aaede66dd282da097938f2"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-gameserver-matchmaking-postgres" : {
+      "files" : {
+        "SKILL.md" : "5d3b86819217298d5faa24925246200ce504bb5b1d37aaeeef4a54e23d09d6f4"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.1.0"
+    },
+    "skills\/pearfy-gameserver-npc-learn" : {
+      "files" : {
+        "SKILL.md" : "72964b69ddfc3c426135b2fe4e663003a8fa9356f4b9bc7653fdbdaa70731e65"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "1.0.0",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-gameserver-postgres" : {
+      "files" : {
+        "SKILL.md" : "4e49667948db3a86bd6c84488f1c04617bea89b5c392388a8bd4123fed068374"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-gameserver-realtime" : {
+      "files" : {
+        "SKILL.md" : "acfcfd1a5f9b292c511c43975098fe54a998d5ab9f6a834b2b00b3c61dea180d"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.1.0"
+    },
+    "skills\/pearfy-gameserver-redis-recovery" : {
+      "files" : {
+        "SKILL.md" : "f17709c67b7d5a3b9d69f412a34f6a96f183aa8325d94db90942beb7db450e15"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.7.0"
+    },
+    "skills\/pearfy-gameserver-threat-director" : {
+      "files" : {
+        "SKILL.md" : "f4793cb9a3fe800ea398bc046e32758fe85318813b6602411232de08a2c7acfa"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "1.0.0",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-gameserver-transport" : {
+      "files" : {
+        "SKILL.md" : "90d11c89c321a42b585eb6b1356d119d54a81f6268a2505209e11fbb0c57575e"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.6.0"
+    },
+    "skills\/pearfy-gameserver-turn-based" : {
+      "files" : {
+        "SKILL.md" : "08132086c6de03086ceb788d0092ec9233b982113a80a2bd714da72a86b9af07"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-gameserver-turn-based-postgres" : {
+      "files" : {
+        "SKILL.md" : "876ad9628108834920c09143a95af2cb815b8de991f0b89773a741752eea8d55"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-gameserver-turn-based-redis" : {
+      "files" : {
+        "SKILL.md" : "eb7645a629ddaffd05572d5f70b311ee9936118109e81a6e8dac0a43056c5602"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-gameserver-world-postgres" : {
+      "files" : {
+        "SKILL.md" : "44dee452d1d6ddc888130b15786b85e58e928c8cba87ef3a0214422ba6b94381"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-gateway-lab" : {
+      "files" : {
+        "SKILL.md" : "351784c425628a71db61d7efb47ae7def2a0ff732c1b155e55aa30f178ae0c8b",
+        "references\/sdk.md" : "30d39768a35d92700277bdc88febd90480194bad195608672fc8fce10dfc6d98"
       },
       "kind" : "skill",
       "moduleVersion" : "workspace",
@@ -82,7 +211,7 @@
     "skills\/pearfy-jobs" : {
       "files" : {
         "SKILL.md" : "1ebac0d14056759c716ed0aa662fa9fd78f8e1e1e46997ae86468fc117a5f68c",
-        "references\/scheduler.md" : "b944264dfdaf1b3ff7553ac392b0779aba7837fae90d6caa6e9a6478e4807392"
+        "references\/scheduler.md" : "9b77fb6af802c4784b49ea31737ca5ec0fc6b2495123a118595b3ab5aa0acebf"
       },
       "kind" : "skill",
       "moduleVersion" : "workspace",
@@ -109,7 +238,7 @@
     "skills\/pearfy-populate" : {
       "files" : {
         "SKILL.md" : "0a281834c7ba90fbbd40c2b2ff62aa5cd09f1233c6475559392237d7a3665cc2",
-        "references\/current-boundary.md" : "488c08f5c5424eb949f7ac7b51df85d78c2cda496b697426330c5618b404ab04"
+        "references\/current-boundary.md" : "a8a522bedf901427b622c002457ab3265e91a80323c09ea1c2ad710255abf6af"
       },
       "kind" : "skill",
       "moduleVersion" : "workspace",
@@ -118,7 +247,7 @@
     "skills\/pearfy-postgres" : {
       "files" : {
         "SKILL.md" : "6e21122eda0c4b09aff7c94ee528afbdb76c4fd118d98b689330b18b30f73187",
-        "references\/connection-and-migrations.md" : "4852001fc1d0b4567b620b5c1fa3a0fbabda456f47aaf88188a09baca66725ab"
+        "references\/connection-and-migrations.md" : "c4f17030a9db4109b993e77b6ad20208efbf7d86a505bc3d3eb5e77e44029e6c"
       },
       "kind" : "skill",
       "moduleVersion" : "workspace",

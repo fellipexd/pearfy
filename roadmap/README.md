@@ -13,6 +13,7 @@ Esta pasta reúne referências de roadmap sem substituir os arquivos-fonte já u
 - `Pearfy-roadmap 2/`: cópia completa do diretório `/Users/fellipexd/Downloads/Pearfy-roadmap 2`, incluindo roadmap, adendo de performance, fontes e testes. Artefatos `.build`, `.swiftpm`, `.DS_Store` e `__pycache__` foram omitidos.
 - `Pearfy-roadmap 3/`: cópia completa do diretório `/Users/fellipexd/Downloads/Pearfy-roadmap 3`, incluindo Connect v1.3 e extensões v1.4, além do roadmap consolidado e do protótipo histórico. Artefatos `.build`, `.swiftpm`, `.DS_Store` e `__pycache__` foram omitidos.
 - `Pearfy-Roadmap-v1.5-Social-Identity-DevKit/`: planejamento v1.5 para capacidades opt-in de Social, Identity e DevKit.
+- `gameserver/`: roadmap dos módulos opcionais de game server, análise de referências open source, recuperação com Redis e critérios de implementação.
 
 O conteúdo dos pacotes 2, 3 e v1.5 é planejamento e protótipo histórico. A implementação efetiva é a do checkout atual; use `estado-atual/`, as matrizes de implementação e o código/testes vigentes para acompanhar o progresso.
 

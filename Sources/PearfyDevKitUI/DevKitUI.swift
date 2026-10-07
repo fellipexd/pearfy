@@ -19,10 +19,14 @@ public enum DevKitEnvironment: String, Codable, Sendable {
 public struct DevKitQuery: Codable, Sendable, Equatable {
     public let window: DevKitWindow
     public let instanceID: String?
+    public let stateOffset: Int
+    public let stateLimit: Int
 
-    public init(window: DevKitWindow, instanceID: String? = nil) {
+    public init(window: DevKitWindow, instanceID: String? = nil, stateOffset: Int = 0, stateLimit: Int = 100) {
         self.window = window
         self.instanceID = instanceID
+        self.stateOffset = max(0, stateOffset)
+        self.stateLimit = min(100, max(1, stateLimit))
     }
 }
 
@@ -400,6 +404,8 @@ public struct DevKitSnapshot: Codable, Sendable, Equatable {
     public let instances: [DevKitInstance]
     public let queries: [DevKitQueryMetrics]
     public let availableSources: [String]
+    public let gameStates: [DevKitGameState]
+    public let gameStateCount: Int
 
     public init(
         overview: DevKitOverview,
@@ -408,7 +414,9 @@ public struct DevKitSnapshot: Codable, Sendable, Equatable {
         logs: [DevKitLog] = [],
         instances: [DevKitInstance] = [],
         queries: [DevKitQueryMetrics] = [],
-        availableSources: [String] = []
+        availableSources: [String] = [],
+        gameStates: [DevKitGameState] = [],
+        gameStateCount: Int = 0
     ) {
         self.overview = overview
         self.routeMetrics = routeMetrics
@@ -417,7 +425,30 @@ public struct DevKitSnapshot: Codable, Sendable, Equatable {
         self.instances = instances
         self.queries = queries
         self.availableSources = Array(Set(availableSources)).sorted()
+        self.gameStates = gameStates
+        self.gameStateCount = gameStateCount
     }
+}
+
+/// Bounded and redacted-preview representation used by the optional game-server adapter.
+public struct DevKitGameState: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    public let revision: UInt64
+    public let updatedAt: Date
+    public let payloadBase64Preview: String
+    public let payloadBytes: Int
+    public let truncated: Bool
+    public init(id: String, revision: UInt64, updatedAt: Date, payloadBase64Preview: String, payloadBytes: Int, truncated: Bool) {
+        self.id = id; self.revision = revision; self.updatedAt = updatedAt
+        self.payloadBase64Preview = payloadBase64Preview; self.payloadBytes = payloadBytes; self.truncated = truncated
+    }
+}
+
+public struct DevKitGameStatePage: Codable, Sendable, Equatable {
+    public let total: Int
+    public let offset: Int
+    public let limit: Int
+    public let states: [DevKitGameState]
 }
 
 /// A replaceable data boundary for tracing, structured logs, and resource adapters.
@@ -501,7 +532,9 @@ public struct DevKitSnapshotSource: Sendable {
                 logs: primary.logs,
                 instances: primary.instances.isEmpty ? local.instances : primary.instances,
                 queries: primary.queries,
-                availableSources: primary.availableSources + local.availableSources
+                availableSources: primary.availableSources + local.availableSources,
+                gameStates: primary.gameStates,
+                gameStateCount: primary.gameStateCount
             )
         }
     }
@@ -687,6 +720,9 @@ public enum PearfyDevKitUI {
         try await router.get("\(apiPrefix)/queries") { request in
             await handler.handle(.queries, request: request)
         }
+        try await router.get("\(apiPrefix)/game-states") { request in
+            await handler.handle(.gameStates, request: request)
+        }
         try await router.useFirst(await traceStore.middleware())
     }
 
@@ -734,6 +770,7 @@ private enum DevKitEndpoint: Equatable {
     case logs
     case instances
     case queries
+    case gameStates
 }
 
 private struct DevKitRequestHandler: Sendable {
@@ -808,6 +845,8 @@ private struct DevKitRequestHandler: Sendable {
                 return try Self.json(snapshot.instances)
             case .queries:
                 return try Self.json(snapshot.queries)
+            case .gameStates:
+                return try Self.json(DevKitGameStatePage(total: snapshot.gameStateCount, offset: query.stateOffset, limit: query.stateLimit, states: snapshot.gameStates))
             }
         } catch {
             // Do not leak provider errors, SQL, credentials, or stack traces to the dashboard.
@@ -826,7 +865,10 @@ private struct DevKitRequestHandler: Sendable {
                       (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || $0 == 45 || $0 == 46 || $0 == 95
                   }) else { return nil }
         }
-        return DevKitQuery(window: window, instanceID: instanceID)
+        let offset = request.queryValue("offset").flatMap(Int.init) ?? 0
+        let limit = request.queryValue("limit").flatMap(Int.init) ?? 100
+        guard (0...10_000_000).contains(offset), (1...100).contains(limit) else { return nil }
+        return DevKitQuery(window: window, instanceID: instanceID, stateOffset: offset, stateLimit: limit)
     }
 
     private static func isAuthorized(_ header: String?, expected: String) -> Bool {

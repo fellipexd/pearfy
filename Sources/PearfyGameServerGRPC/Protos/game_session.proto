@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package pearfy.game.v1;
+
+import "control_messages.proto";
+
+service GameSession {
+  rpc Join(pearfy.common.v1.ControlRequest) returns (pearfy.common.v1.ControlResponse);
+  rpc Leave(pearfy.common.v1.ControlRequest) returns (pearfy.common.v1.ControlResponse);
+}

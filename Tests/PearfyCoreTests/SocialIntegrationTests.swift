@@ -264,7 +264,7 @@ import Testing
             workerID: UUIDv7.generate(), leaseDuration: .seconds(60), maximumAttempts: 1
         ) == nil)
         let ownerPosts = try await storeA.feed(SocialFeedRequest(viewerOwnerID: ownerA))
-        #expect(ownerPosts.items.first(where: { $0.id == terminalPost.id })?.moderationStatus == .error)
+        #expect(ownerPosts.items.first(where: { $0.id == terminalPost.id })?.moderationStatus == .review)
 
         let privateDraft = try SocialPostDraft(
             actorID: privateActor.id,

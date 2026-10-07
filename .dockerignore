@@ -1,1 +1,9 @@
 /sdk-test/
+.build
+**/.build
+Examples/DiscoveryApp/.build/
+Examples/GreeterFeature/.build/
+Examples/MiniValePOC-ON/.build/
+Examples/MiniValePOC-ON/Client/.build/
+.swiftpm
+**/.swiftpm

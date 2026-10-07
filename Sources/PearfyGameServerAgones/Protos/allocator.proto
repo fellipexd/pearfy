@@ -1,0 +1,58 @@
+// Copyright 2026 The Agones Authors.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+// This is a bounded wire-compatible subset of Agones release-1.61.0's
+// proto/allocation/allocation.proto; fields retain their upstream numbers.
+syntax = "proto3";
+
+package allocation;
+
+service AllocationService {
+  rpc Allocate(AllocationRequest) returns (AllocationResponse);
+}
+
+message AllocationRequest {
+  string namespace = 1;
+  SchedulingStrategy scheduling = 5;
+  MetaPatch metadata = 7;
+  repeated GameServerSelector gameServerSelectors = 8;
+
+  enum SchedulingStrategy {
+    Packed = 0;
+    Distributed = 1;
+  }
+}
+
+message AllocationResponse {
+  string gameServerName = 2;
+  repeated GameServerStatusPort ports = 3;
+  string address = 4;
+  string nodeName = 5;
+  repeated GameServerStatusAddress addresses = 8;
+
+  message GameServerStatusPort {
+    string name = 1;
+    int32 port = 2;
+  }
+
+  message GameServerStatusAddress {
+    string type = 1;
+    string address = 2;
+  }
+}
+
+message MetaPatch {
+  map<string, string> labels = 1;
+  map<string, string> annotations = 2;
+}
+
+message GameServerSelector {
+  map<string, string> matchLabels = 1;
+  GameServerState gameServerState = 2;
+
+  enum GameServerState {
+    READY = 0;
+    ALLOCATED = 1;
+  }
+}

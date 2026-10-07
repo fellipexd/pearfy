@@ -137,7 +137,7 @@ public struct PearfyGuardianVerifier: Sendable {
         let testJobs = Self.jobLimit(environment["SWIFT_TEST_JOBS"])
         for (name, arguments) in [
             ("swift-build", ["build", "-j", String(buildJobs), "-Xswiftc", "-disable-batch-mode"]),
-            ("swift-test", ["bash", "scripts/test-unit.sh", "-j", String(testJobs), "-Xswiftc", "-disable-batch-mode"])
+            ("swift-test", ["bash", "scripts/test-unit.sh", "-j", String(testJobs), "--no-parallel", "-Xswiftc", "-disable-batch-mode"])
         ] {
             do {
                 let exitCode = try executor.execute(arguments, at: root)

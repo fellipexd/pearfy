@@ -5,6 +5,7 @@ public enum SocialContentStatus: String, Codable, Sendable {
     case pending
     case approved
     case rejected
+    case review
     case error
 }
 
@@ -347,6 +348,8 @@ public struct SocialModerationWorkItem: Codable, Equatable, Sendable, Identifiab
     public let kind: SocialContentKind
     public let contentID: UUID
     public let ownerID: UUID
+    public let communityID: UUID?
+    public let isNPC: Bool?
     public let body: String
     public let digest: String
     public let revision: Int64
@@ -358,6 +361,8 @@ public struct SocialModerationWorkItem: Codable, Equatable, Sendable, Identifiab
         kind: SocialContentKind,
         contentID: UUID,
         ownerID: UUID,
+        communityID: UUID? = nil,
+        isNPC: Bool? = false,
         body: String,
         digest: String,
         revision: Int64,
@@ -375,6 +380,8 @@ public struct SocialModerationWorkItem: Codable, Equatable, Sendable, Identifiab
         self.kind = kind
         self.contentID = contentID
         self.ownerID = ownerID
+        self.communityID = communityID
+        self.isNPC = isNPC
         self.body = body
         self.digest = digest
         self.revision = revision
@@ -386,17 +393,73 @@ public struct SocialModerationWorkItem: Codable, Equatable, Sendable, Identifiab
 public enum SocialModerationResult: String, Codable, Sendable {
     case approved
     case rejected
+    case review
+}
+
+public struct SocialModerationRAGMatch: Codable, Equatable, Sendable {
+    public let id: UUID
+    public let similarity: Double
+    public let rerankScore: Double
+
+    public init(id: UUID, similarity: Double, rerankScore: Double) {
+        self.id = id
+        self.similarity = similarity
+        self.rerankScore = rerankScore
+    }
 }
 
 public struct SocialModerationDecision: Codable, Equatable, Sendable {
     public let result: SocialModerationResult
     public let provider: String
     public let reason: String?
+    public let confidence: Double?
+    public let explanation: String?
+    public let model: String?
+    public let promptVersion: String?
+    public let ragVersion: String?
+    public let embeddingModel: String?
+    public let matchedRuleIDs: [UUID]
+    public let inputTokens: Int?
+    public let outputTokens: Int?
+    public let latencyMilliseconds: Int64?
+    public let retryCount: Int
+    public let fallbackUsed: Bool
+    public let ragMatches: [SocialModerationRAGMatch]
 
-    public init(result: SocialModerationResult, provider: String = "application", reason: String? = nil) {
+    public init(
+        result: SocialModerationResult,
+        provider: String = "application",
+        reason: String? = nil,
+        confidence: Double? = nil,
+        explanation: String? = nil,
+        model: String? = nil,
+        promptVersion: String? = nil,
+        ragVersion: String? = nil,
+        embeddingModel: String? = nil,
+        matchedRuleIDs: [UUID] = [],
+        inputTokens: Int? = nil,
+        outputTokens: Int? = nil,
+        latencyMilliseconds: Int64? = nil,
+        retryCount: Int = 0,
+        fallbackUsed: Bool = false,
+        ragMatches: [SocialModerationRAGMatch] = []
+    ) {
         self.result = result
         self.provider = String(provider.prefix(80))
         self.reason = reason.map { String($0.prefix(1000)) }
+        self.confidence = confidence.flatMap { (0...1).contains($0) ? $0 : nil }
+        self.explanation = explanation.map { String($0.prefix(2_000)) }
+        self.model = model.map { String($0.prefix(120)) }
+        self.promptVersion = promptVersion.map { String($0.prefix(80)) }
+        self.ragVersion = ragVersion.map { String($0.prefix(80)) }
+        self.embeddingModel = embeddingModel.map { String($0.prefix(120)) }
+        self.matchedRuleIDs = Array(matchedRuleIDs.prefix(100))
+        self.inputTokens = inputTokens.map { max(0, $0) }
+        self.outputTokens = outputTokens.map { max(0, $0) }
+        self.latencyMilliseconds = latencyMilliseconds.map { max(0, $0) }
+        self.retryCount = max(0, retryCount)
+        self.fallbackUsed = fallbackUsed
+        self.ragMatches = Array(ragMatches.prefix(100))
     }
 }
 

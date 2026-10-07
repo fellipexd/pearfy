@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package pearfy.common.v1;
+
+// App-defined payload schemas are versioned separately and carried as bytes.
+message ControlRequest {
+  bytes payload = 1;
+}
+
+message ControlResponse {
+  bytes payload = 1;
+}

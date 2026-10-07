@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package pearfy.matchmaking.v1;
+
+import "control_messages.proto";
+
+service Matchmaking {
+  rpc FindGame(pearfy.common.v1.ControlRequest) returns (pearfy.common.v1.ControlResponse);
+  rpc CreateRoom(pearfy.common.v1.ControlRequest) returns (pearfy.common.v1.ControlResponse);
+}

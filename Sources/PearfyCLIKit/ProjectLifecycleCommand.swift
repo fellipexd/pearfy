@@ -878,7 +878,7 @@ public enum PearfyProjectLifecycleCommand {
         case "social", "community", "social-community":
             return Profile(id: "social-community", moduleIDs: ["http", "data", "postgres", "security", "social", "social-postgres", "observability"], decisions: decisions)
         case "realtime", "game", "realtime-game-server":
-            return Profile(id: "realtime-game-server", moduleIDs: ["http", "messaging", "redis", "observability", "security"], decisions: decisions)
+            return Profile(id: "realtime-game-server", moduleIDs: ["http", "messaging", "redis", "observability", "security", "gameserver"], decisions: decisions)
         case "iot", "iot-backend":
             return Profile(id: "iot-backend", moduleIDs: ["http", "messaging", "redis", "security", "observability"], decisions: decisions)
         case "high-traffic", "high-traffic-platform":

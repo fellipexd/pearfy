@@ -22,6 +22,7 @@
         <a href="#work-traces">Traces de works</a>
         <a href="#errors">Erros HTTP</a>
         <a href="#logs">Logs</a>
+        <a href="#game-states">Estados do game server</a>
         <a href="#queries">Banco & queries</a>
         <a href="#instances">Instâncias</a>
       </nav>
@@ -47,6 +48,7 @@
         <section id="work-traces" class="panel section-panel"><div class="section-head"><div><h2>Traces de works</h2><p class="muted">Execuções concluídas do scheduler ou registradas por um provider, sem payload nem detalhes de erro. Atualização automática a cada 10 segundos.</p></div></div><div id="work-traces-content" class="empty">Nenhum trace de work nesta janela.</div></section>
         <section id="errors" class="panel section-panel"><div class="section-head"><div><h2>Erros HTTP</h2><p class="muted">Respostas 4xx e 5xx correlacionadas ao trace, sem corpo ou mensagem de exceção.</p></div></div><div id="errors-content" class="table-scroll empty">Nenhum erro nesta janela.</div></section>
         <section id="logs" class="panel section-panel"><div class="section-head"><div><h2>Logs</h2><p class="muted">Somente mensagens redigidas pelo provider podem ser exibidas.</p></div></div><div id="logs-content" class="empty">Sem fonte de logs conectada.</div></section>
+        <section id="game-states" class="panel section-panel"><div class="section-head"><div><h2>Estados do game server</h2><p id="game-states-summary" class="muted">Snapshots assíncronos, páginas de até 100 estados. Publique apenas projeções autorizadas e sem segredos.</p></div><button id="game-states-more" class="button" type="button" hidden>Próximos estados</button></div><div id="game-states-content" class="empty">Nenhum estado do game server foi publicado.</div></section>
         <section id="instances" class="panel section-panel"><div class="section-head"><div><h2>Instâncias e recursos</h2><p class="muted">CPU é a utilização no último intervalo de 1 s; RSS é memória residente atual. Storage aparece apenas com provider próprio.</p></div></div><div id="instances-content" class="empty">Sem fonte de recursos conectada.</div></section>
         <section id="queries" class="panel section-panel"><div class="section-head"><div><h2>Banco & queries</h2><p class="muted">Fingerprints HMAC temporários e estatísticas por query/rota, sem SQL ou bindings.</p></div></div><div id="queries-content" class="empty">Sem fonte de métricas de queries conectada.</div></section>
       </section>

@@ -302,10 +302,14 @@ public struct PostgresSocialContentStore: SocialContentStore, Sendable {
                 unsafeSQL: """
                 SELECT json_build_object(
                     'id', q.id::TEXT, 'kind', q.content_kind, 'contentID', q.content_id::TEXT,
-                    'ownerID', q.owner_id::TEXT, 'body', q.content, 'digest', q.digest,
+                    'ownerID', q.owner_id::TEXT, 'isNPC', COALESCE(a.actor_kind = 'npc', FALSE),
+                    'body', q.content, 'digest', q.digest,
                     'revision', q.revision, 'attempt', q.attempts + 1, 'claimToken', $1::TEXT
                 )::TEXT AS content
                 FROM \(Self.moderationQueue) q
+                LEFT JOIN \(Self.posts) p ON q.content_kind = 'post' AND p.id = q.content_id
+                LEFT JOIN \(Self.comments) c ON q.content_kind = 'comment' AND c.id = q.content_id
+                LEFT JOIN \(Self.actors) a ON a.id = COALESCE(p.actor_id, c.actor_id)
                 WHERE q.completed_at IS NULL
                   AND q.next_attempt_at <= CURRENT_TIMESTAMP
                   AND q.attempts < $2
@@ -359,6 +363,38 @@ public struct PostgresSocialContentStore: SocialContentStore, Sendable {
                 ]
             ), column: "id")
             if !changed.isEmpty {
+                let matchedRules = String(decoding: try JSONEncoder().encode(
+                    decision.matchedRuleIDs.map { $0.uuidString.lowercased() }
+                ), as: UTF8.self)
+                let ragMatches = String(decoding: try JSONEncoder().encode(decision.ragMatches), as: UTF8.self)
+                try await transaction.execute(SQLQuery(
+                    unsafeSQL: """
+                    INSERT INTO pearfy_social_moderations
+                        (id, queue_id, content_kind, content_id, revision, decision, confidence, reason,
+                         explanation, provider, model, prompt_version, rag_version, embedding_model,
+                         matched_rule_ids, rag_matches, input_tokens, output_tokens, latency_ms,
+                         retry_count, fallback_used)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+                            $15::jsonb, $16::jsonb, $17, $18, $19, $20, $21)
+                    ON CONFLICT (queue_id) DO NOTHING
+                    """,
+                    parameters: [
+                        .uuid(UUIDv7.generate()), .uuid(item.id), .text(item.kind.rawValue), .uuid(item.contentID),
+                        .integer(item.revision), .text(decision.result.rawValue),
+                        decision.confidence.map(SQLValue.decimal) ?? .null,
+                        decision.reason.map(SQLValue.text) ?? .null,
+                        decision.explanation.map(SQLValue.text) ?? .null,
+                        .text(decision.provider), decision.model.map(SQLValue.text) ?? .null,
+                        decision.promptVersion.map(SQLValue.text) ?? .null,
+                        decision.ragVersion.map(SQLValue.text) ?? .null,
+                        decision.embeddingModel.map(SQLValue.text) ?? .null,
+                        .text(matchedRules), .text(ragMatches),
+                        decision.inputTokens.map { .integer(Int64($0)) } ?? .null,
+                        decision.outputTokens.map { .integer(Int64($0)) } ?? .null,
+                        decision.latencyMilliseconds.map(SQLValue.integer) ?? .null,
+                        .integer(Int64(decision.retryCount)), .boolean(decision.fallbackUsed)
+                    ]
+                ))
                 try await transaction.execute(SQLQuery(
                     unsafeSQL: """
                     INSERT INTO \(Self.moderationAudit)
@@ -441,7 +477,7 @@ public struct PostgresSocialContentStore: SocialContentStore, Sendable {
                 try await transaction.execute(SQLQuery(
                     unsafeSQL: """
                     UPDATE \(Self.contentTable(item.kind))
-                    SET moderation_status = 'error', moderation_reason = $1, moderation_checked_at = CURRENT_TIMESTAMP
+                    SET moderation_status = 'review', moderation_reason = $1, moderation_checked_at = CURRENT_TIMESTAMP
                     WHERE id = $2 AND moderation_revision = $3 AND content_digest = $4 AND deleted_at IS NULL
                     """,
                     parameters: [.text(safeCode), .uuid(item.contentID), .integer(item.revision), .text(item.digest)]
@@ -454,6 +490,18 @@ public struct PostgresSocialContentStore: SocialContentStore, Sendable {
                     WHERE id = $1 AND claim_token = $2 AND completed_at IS NULL
                     """,
                     parameters: [.uuid(item.id), .uuid(item.claimToken), .text(safeCode)]
+                ))
+                try await transaction.execute(SQLQuery(
+                    unsafeSQL: """
+                    INSERT INTO pearfy_social_moderations
+                        (id, queue_id, content_kind, content_id, revision, decision, reason, provider)
+                    VALUES ($1, $2, $3, $4, $5, 'review', $6, 'worker-fallback')
+                    ON CONFLICT (queue_id) DO NOTHING
+                    """,
+                    parameters: [
+                        .uuid(UUIDv7.generate()), .uuid(item.id), .text(item.kind.rawValue),
+                        .uuid(item.contentID), .integer(item.revision), .text(safeCode)
+                    ]
                 ))
             } else {
                 let backoff = min(86_400, 5 * (1 << min(14, max(0, attempts - 1))))
@@ -697,7 +745,8 @@ public struct PostgresSocialContentStore: SocialContentStore, Sendable {
             throw SocialContentError.invalidModerationDigest
         }
         return try SocialModerationWorkItem(
-            id: id, kind: kind, contentID: contentID, ownerID: ownerID, body: row.body,
+            id: id, kind: kind, contentID: contentID, ownerID: ownerID, isNPC: row.isNPC,
+            body: row.body,
             digest: row.digest, revision: row.revision, attempt: row.attempt, claimToken: claimToken
         )
     }
@@ -771,6 +820,7 @@ public struct PostgresSocialContentStore: SocialContentStore, Sendable {
         let kind: String
         let contentID: String
         let ownerID: String
+        let isNPC: Bool?
         let body: String
         let digest: String
         let revision: Int64
@@ -786,7 +836,7 @@ public struct PostgresSocialContentStore: SocialContentStore, Sendable {
                 owner_id UUID NOT NULL,
                 body TEXT NOT NULL CHECK (length(trim(body)) BETWEEN 1 AND 5000),
                 visibility TEXT NOT NULL CHECK (visibility IN ('public','followers','private')),
-                moderation_status TEXT NOT NULL DEFAULT 'pending' CHECK (moderation_status IN ('pending','approved','rejected','error')),
+                moderation_status TEXT NOT NULL DEFAULT 'pending' CHECK (moderation_status IN ('pending','approved','rejected','review','error')),
                 moderation_revision BIGINT NOT NULL DEFAULT 1 CHECK (moderation_revision > 0),
                 content_digest TEXT NOT NULL,
                 idempotency_key TEXT NOT NULL,
@@ -810,7 +860,7 @@ public struct PostgresSocialContentStore: SocialContentStore, Sendable {
                 actor_id UUID NOT NULL REFERENCES \(actors)(id) ON DELETE CASCADE,
                 owner_id UUID NOT NULL,
                 body TEXT NOT NULL CHECK (length(trim(body)) BETWEEN 1 AND 2000),
-                moderation_status TEXT NOT NULL DEFAULT 'pending' CHECK (moderation_status IN ('pending','approved','rejected','error')),
+                moderation_status TEXT NOT NULL DEFAULT 'pending' CHECK (moderation_status IN ('pending','approved','rejected','review','error')),
                 moderation_revision BIGINT NOT NULL DEFAULT 1 CHECK (moderation_revision > 0),
                 content_digest TEXT NOT NULL,
                 idempotency_key TEXT NOT NULL,
@@ -867,7 +917,7 @@ public struct PostgresSocialContentStore: SocialContentStore, Sendable {
                 content_kind TEXT NOT NULL,
                 content_id UUID NOT NULL,
                 provider TEXT NOT NULL,
-                result TEXT NOT NULL CHECK (result IN ('approved','rejected')),
+                result TEXT NOT NULL CHECK (result IN ('approved','rejected','review')),
                 reason TEXT,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE (queue_id)
@@ -889,6 +939,47 @@ public struct PostgresSocialContentStore: SocialContentStore, Sendable {
         SQLMigration(id: "social-content-v1-10-notification-index", up: SQLQuery(unsafeSQL: """
             CREATE INDEX IF NOT EXISTS pearfy_social_notifications_owner_idx
                 ON \(notifications) (recipient_owner_id, created_at DESC, id DESC)
-            """), down: SQLQuery(unsafeSQL: "DROP INDEX IF EXISTS pearfy_social_notifications_owner_idx"))
+            """), down: SQLQuery(unsafeSQL: "DROP INDEX IF EXISTS pearfy_social_notifications_owner_idx")),
+        SQLMigration(id: "social-content-v1-11-review-status", up: SQLQuery(unsafeSQL: """
+            ALTER TABLE \(posts) DROP CONSTRAINT IF EXISTS pearfy_social_posts_moderation_status_check;
+            ALTER TABLE \(posts) ADD CONSTRAINT pearfy_social_posts_moderation_status_check
+                CHECK (moderation_status IN ('pending','approved','rejected','review','error'));
+            ALTER TABLE \(comments) DROP CONSTRAINT IF EXISTS pearfy_social_comments_moderation_status_check;
+            ALTER TABLE \(comments) ADD CONSTRAINT pearfy_social_comments_moderation_status_check
+                CHECK (moderation_status IN ('pending','approved','rejected','review','error'));
+            ALTER TABLE \(moderationAudit) DROP CONSTRAINT IF EXISTS pearfy_social_moderation_audit_result_check;
+            ALTER TABLE \(moderationAudit) ADD CONSTRAINT pearfy_social_moderation_audit_result_check
+                CHECK (result IN ('approved','rejected','review'));
+            """), down: nil),
+        SQLMigration(id: "social-content-v1-12-moderation-history", up: SQLQuery(unsafeSQL: """
+            CREATE TABLE IF NOT EXISTS pearfy_social_moderations (
+                id UUID PRIMARY KEY,
+                queue_id UUID NOT NULL UNIQUE,
+                content_kind TEXT NOT NULL CHECK (content_kind IN ('post','comment')),
+                content_id UUID NOT NULL,
+                revision BIGINT NOT NULL CHECK (revision > 0),
+                decision TEXT NOT NULL CHECK (decision IN ('approved','rejected','review')),
+                confidence DOUBLE PRECISION NULL CHECK (confidence IS NULL OR confidence BETWEEN 0 AND 1),
+                reason TEXT NULL,
+                explanation TEXT NULL,
+                provider TEXT NOT NULL,
+                model TEXT NULL,
+                prompt_version TEXT NULL,
+                rag_version TEXT NULL,
+                embedding_model TEXT NULL,
+                matched_rule_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+                rag_matches JSONB NOT NULL DEFAULT '[]'::jsonb,
+                input_tokens INTEGER NULL,
+                output_tokens INTEGER NULL,
+                latency_ms BIGINT NULL,
+                retry_count INTEGER NOT NULL DEFAULT 0,
+                fallback_used BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS pearfy_social_moderations_content_idx
+                ON pearfy_social_moderations(content_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS pearfy_social_moderations_decision_idx
+                ON pearfy_social_moderations(decision, created_at DESC);
+            """), down: nil)
     ]
 }
