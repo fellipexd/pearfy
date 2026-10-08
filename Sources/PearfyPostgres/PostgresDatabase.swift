@@ -273,6 +273,11 @@ private func postgresQuery(_ query: SQLQuery) throws -> PostgresQuery {
         case .text(let value): bindings.append(value)
         case .integer(let value): bindings.append(value)
         case .decimal(let value): bindings.append(value)
+        case .exactDecimal(let value):
+            guard let numeric = PostgresNumeric(string: value.rawValue) else {
+                throw SQLQueryError.invalidDecimal
+            }
+            bindings.append(PostgresData(numeric: numeric))
         case .boolean(let value): bindings.append(value)
         case .uuid(let value): bindings.append(value)
         case .bytes(let value): try bindings.append(value)

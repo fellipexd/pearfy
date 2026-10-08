@@ -19,6 +19,8 @@ let package = Package(
         .library(name: "PearfyPopulateCore", targets: ["PearfyPopulateCore"]),
         .library(name: "PearfyPopulatePostgres", targets: ["PearfyPopulatePostgres"]),
         .library(name: "PearfyTransactions", targets: ["PearfyTransactions"]),
+        .library(name: "PearfyLedger", targets: ["PearfyLedger"]),
+        .library(name: "PearfyLedgerPostgres", targets: ["PearfyLedgerPostgres"]),
         .library(name: "PearfyPostgres", targets: ["PearfyPostgres"]),
         .library(name: "PearfyRedis", targets: ["PearfyRedis"]),
         .library(name: "PearfySocial", targets: ["PearfySocial"]),
@@ -110,6 +112,18 @@ let package = Package(
             ]
         ),
         .target(name: "PearfyTransactions"),
+        .target(name: "PearfyLedger", dependencies: ["PearfyData"]),
+        .target(
+            name: "PearfyLedgerPostgres",
+            dependencies: [
+                "PearfyLedger",
+                "PearfyData",
+                "PearfyPostgres",
+                "PearfyTransactions",
+                .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "PostgresNIO", package: "postgres-nio")
+            ]
+        ),
         .target(
             name: "PearfyPostgres",
             dependencies: [
@@ -323,6 +337,8 @@ let package = Package(
                 "PearfyPopulatePostgres",
                 "PearfyPopulateCLI",
                 "PearfyTransactions",
+                "PearfyLedger",
+                "PearfyLedgerPostgres",
                 "PearfyPostgres",
                 "PearfySocial",
                 "PearfySocialPostgres",

@@ -12,6 +12,53 @@ public struct SecurityIdentity: Sendable, Equatable {
     }
 }
 
+public struct SecurityResource: Sendable, Equatable {
+    public let type: String
+    public let id: String
+    public let tenantID: String?
+
+    public init(type: String, id: String, tenantID: String? = nil) {
+        self.type = type
+        self.id = id
+        self.tenantID = tenantID
+    }
+}
+
+public struct ResourceAuthorizationRequest: Sendable, Equatable {
+    public let resource: SecurityResource
+
+    public init(resource: SecurityResource) {
+        self.resource = resource
+    }
+}
+
+public enum ResourceAuthorizationDecision: Sendable, Equatable {
+    case allow
+    case deny
+}
+
+/// Applications define resource loading and policy. A missing implementation
+/// is never treated as permission.
+public protocol ResourceAuthorizationPolicy: Sendable {
+    func decide(
+        principal: SecurityIdentity,
+        action: String,
+        resource: SecurityResource
+    ) async -> ResourceAuthorizationDecision
+}
+
+public struct DenyAllResourceAuthorizationPolicy: ResourceAuthorizationPolicy, Sendable {
+    public init() {}
+
+    public func decide(
+        principal: SecurityIdentity,
+        action: String,
+        resource: SecurityResource
+    ) async -> ResourceAuthorizationDecision {
+        .deny
+    }
+}
+
 public struct APIKeyAuthenticator: Sendable {
     private struct Entry: Sendable {
         let key: Data
@@ -224,12 +271,52 @@ public enum SecurityMiddleware {
         }
     }
 
+    /// Resolves a server-side resource for the authenticated principal, then
+    /// delegates the action decision. The resolver should load the resource in
+    /// the authorized tenant/ownership scope and must not trust a client ID alone.
+    public static func authorizeResource(
+        action: String,
+        policy: any ResourceAuthorizationPolicy,
+        resolve: @escaping @Sendable (HTTPRequest, SecurityIdentity) async throws -> ResourceAuthorizationRequest?
+    ) -> HTTPMiddleware {
+        { request, next in
+            guard let principal = authenticatedIdentity(in: request) else {
+                return secure(HTTPResponse.text("Unauthorized", status: HTTPStatus.unauthorized.rawValue))
+            }
+            let resolved: ResourceAuthorizationRequest?
+            do {
+                resolved = try await resolve(request, principal)
+            } catch {
+                return secure(HTTPResponse.text("Internal Server Error", status: HTTPStatus.internalServerError.rawValue))
+            }
+            guard let resolved else {
+                return secure(HTTPResponse.text("Not Found", status: HTTPStatus.notFound.rawValue))
+            }
+            guard await policy.decide(
+                principal: principal,
+                action: action,
+                resource: resolved.resource
+            ) == .allow else {
+                return secure(HTTPResponse.text("Forbidden", status: HTTPStatus.forbidden.rawValue))
+            }
+            return secure(await next(request))
+        }
+    }
+
     public static func secureHeaders() -> HTTPMiddleware {
         { request, next in secure(await next(request)) }
     }
 
     public static func authenticatedSubject(in request: HTTPRequest) -> String? {
         request.contextValue(subjectKey)
+    }
+
+    public static func authenticatedIdentity(in request: HTTPRequest) -> SecurityIdentity? {
+        guard request.contextValue(authenticatedKey) == "true",
+              let subject = request.contextValue(subjectKey),
+              !subject.isEmpty else { return nil }
+        let roles = Set(request.contextValue(rolesKey)?.split(separator: ",").map(String.init) ?? [])
+        return SecurityIdentity(subject: subject, roles: roles)
     }
 
     private static func secure(_ response: HTTPResponse) -> HTTPResponse {

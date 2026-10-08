@@ -325,10 +325,11 @@ public actor HTTPRouter {
     }
 
     private func addingRouteAccessContext(to request: HTTPRequest) -> HTTPRequest {
-        for route in routes where Self.match(route.segments, path: request.path) != nil {
+        for route in routes {
+            guard let parameters = Self.match(route.segments, path: request.path) else { continue }
             let methodMatches = route.method == request.method || (request.method == .head && route.method == .get)
             guard methodMatches else { continue }
-            var contextualRequest = request.addingContextValue(
+            var contextualRequest = request.addingPathParameters(parameters).addingContextValue(
                 HTTPRequest.routeTemplateContextKey,
                 value: route.path
             )

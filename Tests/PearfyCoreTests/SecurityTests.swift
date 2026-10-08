@@ -157,6 +157,83 @@ import Testing
     #expect(String(decoding: authorized.body, as: UTF8.self) == "operator")
 }
 
+@Test func resourceAuthorizationUsesResolvedResourceAndDeniesByDefault() async throws {
+    let authenticator = APIKeyAuthenticator(keys: [
+        "user-one-key": SecurityIdentity(subject: "user-one", roles: ["ADMIN"])
+    ])
+    let router = HTTPRouter()
+    try await router.use(SecurityMiddleware.apiKey(authenticator))
+    try await router.use(SecurityMiddleware.authorizeResource(
+        action: "read",
+        policy: TenantResourcePolicy()
+    ) { request, principal in
+        guard let identifier = request.pathParameter("resourceID") else { return nil }
+        // The tenant should come from a resource loaded under this principal's scope.
+        let tenant = identifier == "owned" ? principal.subject : "user-two"
+        return ResourceAuthorizationRequest(resource: SecurityResource(
+            type: "document",
+            id: identifier,
+            tenantID: tenant
+        ))
+    })
+    try await router.get("/documents/{resourceID}") { request in
+        .text(SecurityMiddleware.authenticatedSubject(in: request) ?? "missing")
+    }
+    try await router.freeze()
+
+    let ownResource = await router.handle(try HTTPRequest(
+        method: .get,
+        target: "/documents/owned",
+        headers: ["x-api-key": "user-one-key"]
+    ))
+    let foreignResource = await router.handle(try HTTPRequest(
+        method: .get,
+        target: "/documents/valid-but-foreign",
+        headers: ["x-api-key": "user-one-key"]
+    ))
+    let anonymous = await router.handle(try HTTPRequest(
+        method: .get,
+        target: "/documents/owned"
+    ))
+    #expect(ownResource.status == 200)
+    #expect(foreignResource.status == 403)
+    #expect(anonymous.status == 401)
+}
+
+@Test func denyAllResourcePolicyRejectsAuthenticatedPrincipal() async throws {
+    let router = HTTPRouter()
+    try await router.use(SecurityMiddleware.apiKey(APIKeyAuthenticator(keys: [
+        "key": SecurityIdentity(subject: "user")
+    ])))
+    try await router.use(SecurityMiddleware.authorizeResource(
+        action: "write",
+        policy: DenyAllResourceAuthorizationPolicy()
+    ) { _, _ in
+        ResourceAuthorizationRequest(resource: SecurityResource(type: "record", id: "record-1"))
+    })
+    try await router.get("/record") { _ in .text("unreachable") }
+    try await router.freeze()
+
+    let response = await router.handle(try HTTPRequest(
+        method: .get,
+        target: "/record",
+        headers: ["x-api-key": "key"]
+    ))
+    #expect(response.status == 403)
+}
+
+private struct TenantResourcePolicy: ResourceAuthorizationPolicy {
+    func decide(
+        principal: SecurityIdentity,
+        action: String,
+        resource: SecurityResource
+    ) async -> ResourceAuthorizationDecision {
+        guard action == "read", resource.type == "document",
+              resource.tenantID == principal.subject else { return .deny }
+        return .allow
+    }
+}
+
 private func makeToken(
     algorithm: String = "HS256",
     keyID: String?,

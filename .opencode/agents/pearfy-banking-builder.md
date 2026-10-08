@@ -1,0 +1,1 @@
+../../.agents/agents/pearfy-banking-builder.md

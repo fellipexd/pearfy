@@ -919,6 +919,61 @@
       "introducedInSDK": null
     },
     {
+      "id": "ledger",
+      "name": "Pearfy ledger",
+      "version": "workspace",
+      "implementationStatus": "implemented",
+      "available": true,
+      "summary": "Exact fixed-scale money, balanced append-only ledger, durable idempotent operations and PostgreSQL resource locks",
+      "requires": [
+        "postgres"
+      ],
+      "products": [
+        "PearfyLedger",
+        "PearfyLedgerPostgres"
+      ],
+      "capabilities": [
+        "Money represented as signed integer minor units with explicit currency and scale",
+        "Balanced immutable debit/credit postings, checked by the API and deferred PostgreSQL constraint trigger",
+        "Persistent idempotency scoped by caller-provided scope/key and SHA-256 of caller-provided canonical parameter bytes",
+        "One PostgreSQL transaction for operation callback, postings and stored result",
+        "Transaction-scoped advisory locks for idempotency keys and sorted resource keys",
+        "Ledger-derived credit-minus-debit balances"
+      ],
+      "configurationChecks": [
+        "Start PearfyPostgresDatabase and apply the module schema before using the adapter",
+        "Include every account ID in resourceKeys before reading or changing account state",
+        "Use reconcile after TransactionCommitOutcomeUnknown before retrying"
+      ],
+      "skill": "pearfy-ledger",
+      "skillVersion": "1.0.0",
+      "references": [
+        ".agents/skills/pearfy-ledger/SKILL.md",
+        "docs/LEDGER.md"
+      ],
+      "cliCommands": [
+        "pearfy add ledger"
+      ],
+      "contracts": [
+        "Sources/PearfyLedger/LedgerContracts.swift",
+        "Sources/PearfyLedgerPostgres/PostgresFinancialOperationStore.swift"
+      ],
+      "restrictions": [
+        "No currency registry, banking rules, account ownership policy, payment provider or outbox is included",
+        "Canonical parameter encoding is supplied by the caller; exact bytes are hashed",
+        "A balance is derived from immutable entries and may be expensive as history grows",
+        "Retry callbacks must be limited to transaction-enlisted SQL; unknown commit outcomes require reconciliation"
+      ],
+      "validation": [
+        "Unit tests cover exact parsing, scale validation, arithmetic and posting balance",
+        "PostgreSQL guarantees require configured real PostgreSQL integration tests"
+      ],
+      "mcpTools": [],
+      "mcpResources": [],
+      "mcpResourceTemplates": [],
+      "introducedInSDK": null
+    },
+    {
       "id": "payments",
       "name": "Pearfy payments",
       "version": "planned",

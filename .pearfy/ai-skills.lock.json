@@ -3,9 +3,13 @@
     "agents" : {
       "files" : {
         "pearfy-architect.md" : "b9e589d0d91af8c902a244f8f90145c7457bed67b0fb597c09694f8b1f059add",
+        "pearfy-banking-architect.md" : "52e910ce4d9d51fc009dea2e250f8d47b183f433d380ca6629a6f81a83b12aee",
+        "pearfy-banking-builder.md" : "2146caadc0db7fdb69432517ca7564c4ab70f1661d269aa3d9366197c9d3fdee",
+        "pearfy-banking-reviewer.md" : "aba636bcc45b63f66be9fd80937d80f82665a914ae7ccace744180410237437c",
         "pearfy-builder.md" : "f76a9666138624a1e00d8ab232243359e09a486d4db9f76b76c2701310cdc225",
         "pearfy-connect.md" : "f46f7e92144935e6ee0ca4dd58459fecaca9bfb067537584d2a6cd0f1580b806",
         "pearfy-data.md" : "1d4bfd007d5361ed4a1dfd446bcbe0d002235eed27139493cb5b20be0fe2d70e",
+        "pearfy-gameserver.md" : "3b93b7605835792cbc7a411c504feb99399f4de8aa14cecfd4559578e8ed15c9",
         "pearfy-guardian.md" : "6480023c1eb71742dbd5e04528c42859abacd1ab63edbe9211a9e64f7a562fe0",
         "pearfy-integrator.md" : "4792a4efbf702926b78ad975ba248515d1cf61b6c12e6220fbf809894da9ebde",
         "pearfy-performance.md" : "2566ee5fb968d12f1240208f490386eb97c35de3144d81a3f139ad6bc194f22f",
@@ -212,6 +216,14 @@
       "files" : {
         "SKILL.md" : "1ebac0d14056759c716ed0aa662fa9fd78f8e1e1e46997ae86468fc117a5f68c",
         "references\/scheduler.md" : "9b77fb6af802c4784b49ea31737ca5ec0fc6b2495123a118595b3ab5aa0acebf"
+      },
+      "kind" : "skill",
+      "moduleVersion" : "workspace",
+      "version" : "1.0.0"
+    },
+    "skills\/pearfy-ledger" : {
+      "files" : {
+        "SKILL.md" : "499c6017e87be8483bb1306df9c4438ff2d2bf5b241b4a9e69dc594f8c8316a4"
       },
       "kind" : "skill",
       "moduleVersion" : "workspace",

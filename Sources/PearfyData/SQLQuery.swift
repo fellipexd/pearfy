@@ -1,11 +1,63 @@
 import Foundation
 import Crypto
 
+/// A bounded base-10 value whose digits are retained as text until the database
+/// adapter binds it as NUMERIC. Exponents and floating-point spellings are rejected.
+public struct SQLExactDecimal: Sendable, Equatable, Codable, Hashable, CustomStringConvertible {
+    public let rawValue: String
+
+    private enum CodingKeys: String, CodingKey { case rawValue }
+
+    public init(_ rawValue: String) throws {
+        let bytes = Array(rawValue.utf8)
+        guard !bytes.isEmpty, bytes.count <= 256 else { throw SQLQueryError.invalidDecimal }
+        let digits = bytes.first == 45 ? Array(bytes.dropFirst()) : bytes
+        guard !digits.isEmpty else { throw SQLQueryError.invalidDecimal }
+        var foundDecimalPoint = false
+        var integerDigits = 0
+        var fractionDigits = 0
+        for byte in digits {
+            if byte == 46, !foundDecimalPoint {
+                foundDecimalPoint = true
+            } else if (48...57).contains(byte) {
+                if foundDecimalPoint { fractionDigits += 1 } else { integerDigits += 1 }
+            } else {
+                throw SQLQueryError.invalidDecimal
+            }
+        }
+        guard integerDigits > 0, (!foundDecimalPoint || fractionDigits > 0) else {
+            throw SQLQueryError.invalidDecimal
+        }
+        self.rawValue = rawValue
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        do {
+            try self.init(container.decode(String.self, forKey: .rawValue))
+        } catch {
+            throw DecodingError.dataCorruptedError(
+                forKey: .rawValue,
+                in: container,
+                debugDescription: SQLQueryError.invalidDecimal.description
+            )
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(rawValue, forKey: .rawValue)
+    }
+
+    public var description: String { rawValue }
+}
+
 public enum SQLValue: Sendable, Equatable, Codable {
     case null
     case text(String)
     case integer(Int64)
     case decimal(Double)
+    case exactDecimal(SQLExactDecimal)
     case boolean(Bool)
     case uuid(UUID)
     case bytes(Data)
@@ -20,6 +72,7 @@ public enum SQLValue: Sendable, Equatable, Codable {
         case text
         case integer
         case decimal
+        case exactDecimal
         case boolean
         case uuid
         case bytes
@@ -32,6 +85,8 @@ public enum SQLValue: Sendable, Equatable, Codable {
         case .text: self = .text(try container.decode(String.self, forKey: .value))
         case .integer: self = .integer(try container.decode(Int64.self, forKey: .value))
         case .decimal: self = .decimal(try container.decode(Double.self, forKey: .value))
+        case .exactDecimal:
+            self = .exactDecimal(try SQLExactDecimal(container.decode(String.self, forKey: .value)))
         case .boolean: self = .boolean(try container.decode(Bool.self, forKey: .value))
         case .uuid: self = .uuid(try container.decode(UUID.self, forKey: .value))
         case .bytes: self = .bytes(try container.decode(Data.self, forKey: .value))
@@ -52,6 +107,9 @@ public enum SQLValue: Sendable, Equatable, Codable {
         case .decimal(let value):
             try container.encode(Kind.decimal, forKey: .kind)
             try container.encode(value, forKey: .value)
+        case .exactDecimal(let value):
+            try container.encode(Kind.exactDecimal, forKey: .kind)
+            try container.encode(value.rawValue, forKey: .value)
         case .boolean(let value):
             try container.encode(Kind.boolean, forKey: .kind)
             try container.encode(value, forKey: .value)
@@ -74,6 +132,7 @@ public enum SQLQueryError: Error, Sendable, Equatable, CustomStringConvertible {
     case invalidMigrationID(String)
     case migrationChecksumMismatch(id: String, expected: String, recorded: String)
     case migrationNotApplied(String)
+    case invalidDecimal
 
     public var description: String {
         switch self {
@@ -86,6 +145,7 @@ public enum SQLQueryError: Error, Sendable, Equatable, CustomStringConvertible {
         case .migrationChecksumMismatch(let id, let expected, let recorded):
             "PEARFY_DATA_007: migration '\(id)' checksum mismatch (expected \(expected), recorded \(recorded))"
         case .migrationNotApplied(let id): "PEARFY_DATA_008: migration '\(id)' is not applied"
+        case .invalidDecimal: "PEARFY_DATA_022: invalid or oversized exact decimal value"
         }
     }
 }
@@ -516,6 +576,9 @@ private enum SQLMigrationChecksum {
             case .decimal(let value):
                 append("decimal", to: &data)
                 append(String(value.bitPattern, radix: 16), to: &data)
+            case .exactDecimal(let value):
+                append("exact-decimal", to: &data)
+                append(value.rawValue, to: &data)
             case .boolean(let value):
                 append("boolean", to: &data)
                 append(value ? "true" : "false", to: &data)
