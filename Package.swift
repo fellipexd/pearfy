@@ -55,6 +55,18 @@ let package = Package(
         .executable(name: "pearfy", targets: ["PearfyCLI"]),
         .executable(name: "HelloPearfy", targets: ["HelloPearfy"])
     ],
+    traits: [
+        .trait(name: "Crypto"),
+        .trait(name: "Macros", enabledTraits: ["Crypto"]),
+        .trait(name: "NIO"),
+        .trait(name: "Postgres", enabledTraits: ["Crypto", "NIO"]),
+        .trait(name: "Redis", enabledTraits: ["NIO"]),
+        .trait(name: "NIOSSL", enabledTraits: ["Crypto", "NIO"]),
+        .trait(name: "GameServerGRPC", enabledTraits: ["Crypto", "NIO"]),
+        // Keep the old all-products behavior for consumers without a trait list.
+        // Pearfy-managed manifests opt into only the traits their modules need.
+        .default(enabledTraits: ["Crypto", "Macros", "NIO", "Postgres", "Redis", "NIOSSL", "GameServerGRPC"])
+    ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
@@ -65,6 +77,7 @@ let package = Package(
         .package(url: "https://github.com/grpc/grpc-swift-2.git", from: "2.3.0"),
         .package(url: "https://github.com/grpc/grpc-swift-nio-transport.git", from: "2.0.0"),
         .package(url: "https://github.com/grpc/grpc-swift-protobuf.git", from: "2.0.0"),
+        .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.38.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.3")
     ],
     targets: [
@@ -77,19 +90,19 @@ let package = Package(
             name: "PearfyConnect",
             dependencies: [
                 "PearfyWeb",
-                .product(name: "Crypto", package: "swift-crypto")
+                .product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"]))
             ]
         ),
         .target(name: "PearfyValidation", dependencies: ["PearfyCore"]),
         .target(
             name: "PearfySecurity",
-            dependencies: ["PearfyWeb", .product(name: "Crypto", package: "swift-crypto")]
+            dependencies: ["PearfyWeb", .product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"]))]
         ),
         .target(
             name: "PearfyData",
             dependencies: [
                 "PearfyCore",
-                .product(name: "Crypto", package: "swift-crypto")
+                .product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"]))
             ]
         ),
         .target(name: "PearfyPopulateCore", dependencies: ["PearfyData"]),
@@ -99,7 +112,7 @@ let package = Package(
                 "PearfyData",
                 "PearfyPostgres",
                 "PearfyPopulateCore",
-                .product(name: "Crypto", package: "swift-crypto")
+                .product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"]))
             ]
         ),
         .target(
@@ -108,7 +121,7 @@ let package = Package(
                 "PearfyPopulateCore",
                 "PearfyPopulatePostgres",
                 "PearfyPostgres",
-                .product(name: "Crypto", package: "swift-crypto")
+                .product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"]))
             ]
         ),
         .target(name: "PearfyTransactions"),
@@ -120,8 +133,8 @@ let package = Package(
                 "PearfyData",
                 "PearfyPostgres",
                 "PearfyTransactions",
-                .product(name: "Crypto", package: "swift-crypto"),
-                .product(name: "PostgresNIO", package: "postgres-nio")
+                .product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"])),
+                .product(name: "PostgresNIO", package: "postgres-nio", condition: .when(traits: ["Postgres"]))
             ]
         ),
         .target(
@@ -131,8 +144,8 @@ let package = Package(
                 "PearfyData",
                 "PearfyTransactions",
                 "PearfyObservability",
-                .product(name: "PostgresNIO", package: "postgres-nio"),
-                .product(name: "Logging", package: "swift-log")
+                .product(name: "PostgresNIO", package: "postgres-nio", condition: .when(traits: ["Postgres"])),
+                .product(name: "Logging", package: "swift-log", condition: .when(traits: ["Postgres"]))
             ]
         ),
         .target(name: "PearfyCache", dependencies: ["PearfyObservability"]),
@@ -144,8 +157,8 @@ let package = Package(
                 "PearfySocial",
                 "PearfyData",
                 "PearfyPostgres",
-                .product(name: "PostgresNIO", package: "postgres-nio"),
-                .product(name: "Crypto", package: "swift-crypto")
+                .product(name: "PostgresNIO", package: "postgres-nio", condition: .when(traits: ["Postgres"])),
+                .product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"]))
             ]
         ),
         .target(name: "PearfyJobs", dependencies: ["PearfyContext"]),
@@ -153,7 +166,7 @@ let package = Package(
         .target(name: "PearfyAI", dependencies: ["PearfyCloud"]),
         .target(
             name: "PearfyObservability",
-            dependencies: ["PearfyWeb", .product(name: "Crypto", package: "swift-crypto")]
+            dependencies: ["PearfyWeb", .product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"]))]
         ),
         .target(
             name: "PearfyDevKitUI",
@@ -163,7 +176,7 @@ let package = Package(
         .target(name: "PearfyGatewayLab"),
         .target(
             name: "PearfyGameServer",
-            dependencies: [.product(name: "Crypto", package: "swift-crypto")]
+            dependencies: [.product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"]))]
         ),
         .target(name: "PearfyGameServerRealtime", dependencies: ["PearfyGameServer"]),
         .target(
@@ -171,36 +184,38 @@ let package = Package(
             dependencies: [
                 "PearfyGameServer",
                 "PearfyContext",
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOConcurrencyHelpers", package: "swift-nio"),
-                .product(name: "NIOHTTP1", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio"),
-                .product(name: "NIOWebSocket", package: "swift-nio"),
-                .product(name: "NIOSSL", package: "swift-nio-ssl"),
-                .product(name: "Crypto", package: "swift-crypto")
+                .product(name: "NIOCore", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOConcurrencyHelpers", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOHTTP1", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOPosix", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOWebSocket", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOSSL", package: "swift-nio-ssl", condition: .when(traits: ["NIOSSL"])),
+                .product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"]))
             ]
         ),
         .target(
             name: "PearfyGameServerGRPC",
             dependencies: [
                 "PearfyGameServer",
-                .product(name: "GRPCCore", package: "grpc-swift-2"),
-                .product(name: "GRPCNIOTransportHTTP2Posix", package: "grpc-swift-nio-transport"),
-                .product(name: "GRPCProtobuf", package: "grpc-swift-protobuf")
+                .product(name: "GRPCCore", package: "grpc-swift-2", condition: .when(traits: ["GameServerGRPC"])),
+                .product(name: "GRPCNIOTransportHTTP2Posix", package: "grpc-swift-nio-transport", condition: .when(traits: ["GameServerGRPC"])),
+                .product(name: "GRPCProtobuf", package: "grpc-swift-protobuf", condition: .when(traits: ["GameServerGRPC"])),
+                .product(name: "SwiftProtobuf", package: "swift-protobuf", condition: .when(traits: ["GameServerGRPC"]))
             ],
-            sources: ["GameServerGRPCServer.swift", "Protos"],
-            plugins: [.plugin(name: "GRPCProtobufGenerator", package: "grpc-swift-protobuf")]
+            exclude: ["Protos"],
+            sources: ["GameServerGRPCServer.swift", "Generated"]
         ),
         .target(
             name: "PearfyGameServerAgones",
             dependencies: [
                 "PearfyGameServer", "PearfyCloud", "PearfyContext", "PearfyDI", "PearfyConfiguration", "PearfyCore",
-                .product(name: "GRPCCore", package: "grpc-swift-2"),
-                .product(name: "GRPCNIOTransportHTTP2Posix", package: "grpc-swift-nio-transport"),
-                .product(name: "GRPCProtobuf", package: "grpc-swift-protobuf")
+                .product(name: "GRPCCore", package: "grpc-swift-2", condition: .when(traits: ["GameServerGRPC"])),
+                .product(name: "GRPCNIOTransportHTTP2Posix", package: "grpc-swift-nio-transport", condition: .when(traits: ["GameServerGRPC"])),
+                .product(name: "GRPCProtobuf", package: "grpc-swift-protobuf", condition: .when(traits: ["GameServerGRPC"])),
+                .product(name: "SwiftProtobuf", package: "swift-protobuf", condition: .when(traits: ["GameServerGRPC"]))
             ],
-            sources: ["AgonesSDKLifecycle.swift", "AgonesAllocator.swift", "Protos"],
-            plugins: [.plugin(name: "GRPCProtobufGenerator", package: "grpc-swift-protobuf")]
+            exclude: ["Protos"],
+            sources: ["AgonesSDKLifecycle.swift", "AgonesAllocator.swift", "Generated"]
         ),
         .target(
             name: "PearfyGameServerPostgres",
@@ -218,11 +233,11 @@ let package = Package(
             name: "PearfyGameServerRedisRecovery",
             dependencies: [
                 "PearfyGameServer",
-                .product(name: "Crypto", package: "swift-crypto"),
-                .product(name: "RediStack", package: "RediStack"),
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio"),
-                .product(name: "NIOSSL", package: "swift-nio-ssl")
+                .product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"])),
+                .product(name: "RediStack", package: "RediStack", condition: .when(traits: ["Redis"])),
+                .product(name: "NIOCore", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOPosix", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOSSL", package: "swift-nio-ssl", condition: .when(traits: ["NIOSSL"]))
             ]
         ),
         .target(
@@ -240,9 +255,9 @@ let package = Package(
                 "PearfyCache",
                 "PearfyMessaging",
                 "PearfyContext",
-                .product(name: "RediStack", package: "RediStack"),
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio")
+                .product(name: "RediStack", package: "RediStack", condition: .when(traits: ["Redis"])),
+                .product(name: "NIOCore", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOPosix", package: "swift-nio", condition: .when(traits: ["NIO"]))
             ]
         ),
         .target(
@@ -250,37 +265,37 @@ let package = Package(
             dependencies: [
                 "PearfyContext",
                 "PearfyWeb",
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOHTTP1", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio")
+                .product(name: "NIOCore", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOHTTP1", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOPosix", package: "swift-nio", condition: .when(traits: ["NIO"]))
             ]
         ),
         .target(name: "PearfyTesting", dependencies: ["PearfyDI"]),
         .target(
             name: "PearfyMacros",
-            dependencies: ["PearfyDI", "PearfyWeb", "PearfyValidation", "PearfyData", "PearfyMacrosImpl"]
+            dependencies: ["PearfyDI", "PearfyWeb", "PearfyValidation", "PearfyData", .target(name: "PearfyMacrosImpl", condition: .when(traits: ["Macros"]))]
         ),
         .macro(
             name: "PearfyMacrosImpl",
             dependencies: [
-                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-                .product(name: "SwiftSyntax", package: "swift-syntax"),
-                .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
-                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-                .product(name: "SwiftDiagnostics", package: "swift-syntax")
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax", condition: .when(traits: ["Macros"])),
+                .product(name: "SwiftSyntax", package: "swift-syntax", condition: .when(traits: ["Macros"])),
+                .product(name: "SwiftSyntaxBuilder", package: "swift-syntax", condition: .when(traits: ["Macros"])),
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax", condition: .when(traits: ["Macros"])),
+                .product(name: "SwiftDiagnostics", package: "swift-syntax", condition: .when(traits: ["Macros"]))
             ]
         ),
         .executableTarget(
             name: "PearfyDiscoveryGenerator",
             dependencies: [
-                .product(name: "SwiftParser", package: "swift-syntax"),
-                .product(name: "SwiftSyntax", package: "swift-syntax")
+                .product(name: "SwiftParser", package: "swift-syntax", condition: .when(traits: ["Macros"])),
+                .product(name: "SwiftSyntax", package: "swift-syntax", condition: .when(traits: ["Macros"]))
             ]
         ),
         .plugin(
             name: "PearfyDiscoveryPlugin",
             capability: .buildTool(),
-            dependencies: ["PearfyDiscoveryGenerator"]
+            dependencies: [.target(name: "PearfyDiscoveryGenerator", condition: .when(traits: ["Macros"]))]
         ),
         .executableTarget(
             name: "PearfyBenchmarks",
@@ -296,9 +311,9 @@ let package = Package(
                 "PearfyCloud",
                 "PearfyContext",
                 "PearfyConfiguration",
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOHTTP1", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio")
+                .product(name: "NIOCore", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOHTTP1", package: "swift-nio", condition: .when(traits: ["NIO"])),
+                .product(name: "NIOPosix", package: "swift-nio", condition: .when(traits: ["NIO"]))
             ]
         ),
         .target(
@@ -310,7 +325,7 @@ let package = Package(
                 "PearfyGameServer",
                 "PearfyData",
                 "PearfyPostgres",
-                .product(name: "Crypto", package: "swift-crypto")
+                .product(name: "Crypto", package: "swift-crypto", condition: .when(traits: ["Crypto"]))
             ],
             resources: [.process("module-registry.json")]
         ),

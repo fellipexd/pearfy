@@ -93,6 +93,8 @@ public enum PearfyProjectLifecycleCommand {
             throw error
         }
         print("Created Pearfy 0.1.0 project \(name) with profile \(profile.id) at \(created.path).")
+        print("Architecture style: clean (default when no style is specified).")
+        print("The HTTP starter uses Pearfy route macros and explicitly registers the generated routes.")
         print("Run `cd \(created.path) && swift build`; traceability is in \(manifestName).")
         return 0
     }
@@ -310,7 +312,7 @@ public enum PearfyProjectLifecycleCommand {
         let profile = try resolveProfile(manifest.architecture.profile, decisions: manifest.architecture.decisions)
         let missing = Set(profile.moduleIDs).subtracting(selectedIDs)
         if missing.isEmpty {
-            print("PASS architecture: profile \(profile.id) has required modules \(profile.moduleIDs.joined(separator: ", "))")
+            print("PASS architecture: style \(manifest.architecture.style); profile \(profile.id) has required modules \(profile.moduleIDs.joined(separator: ", "))")
             return 0
         }
         print("FAIL architecture: profile \(profile.id) is missing modules \(missing.sorted().joined(separator: ", "))")
@@ -352,6 +354,7 @@ public enum PearfyProjectLifecycleCommand {
             try writeHistory("migration-contract-created", root: projectRoot, references: ["routes:\(contract.routes.count)"])
             print("Contract-first migration initialized; \(contract.routes.count) routes discovered.")
             print("No legacy source code was changed. Map and implement routes, then run per-route E2E verification.")
+            print("Review macro guidance with `pearfy migrate status routes` and `pearfy migrate status elements` before implementation.")
             return 0
         }
 
@@ -385,11 +388,13 @@ public enum PearfyProjectLifecycleCommand {
         }
         if options == ["routes"] {
             for route in contract.routes {
-                print("\(route.state.rawValue)\t\(route.key)\t\(route.id)")
+                let macroGuidance = PearfyMacroMigrationGuidance.route(method: route.method, path: route.path)
+                print("\(route.state.rawValue)\t\(route.key)\t\(route.id)\t\(macroGuidance.statusLine)")
             }
         } else if options == ["elements"] {
             for element in contract.elements {
-                print("\(element.state.rawValue)\t\(element.kind.rawValue)\t\(element.id)")
+                let macroGuidance = PearfyMacroMigrationGuidance.element(element)
+                print("\(element.state.rawValue)\t\(element.kind.rawValue)\t\(element.id)\t\(macroGuidance.statusLine)")
             }
         }
         return 0

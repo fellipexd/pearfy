@@ -12,7 +12,7 @@ Use when changing API grouping, public contract metadata, or schema discovery. V
 
 ## Current implementation
 
-This checkout implements route groups, operation metadata, typed request/response schema references and OpenAPI route export. Read `references/route-contracts.md`; inspect `Sources/PearfyConnect/ContractCompiler.swift` and `Sources/PearfyWeb/HTTPRouteGroup.swift`.
+This checkout implements route groups, operation metadata, typed request/response schema references and OpenAPI route export. Prefer `@RouteGroup` for literal route groups and `@ContractModel`/`@ContractField` for Codable types whose fields fit the current schema macro; these macros describe contract metadata and do not generate SDK clients. Read `references/route-contracts.md` and the exact limits in `../pearfy-core/references/macros.md`; inspect `Sources/PearfyConnect/ContractCompiler.swift` and `Sources/PearfyWeb/HTTPRouteGroup.swift`.
 
 ## Important boundary
 

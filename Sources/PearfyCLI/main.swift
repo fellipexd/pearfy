@@ -85,6 +85,13 @@ struct PearfyCLI {
                 projectRoot: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
             )
         }
+        if ["dev", "start", "build"].contains(command) {
+            return try PearfyApplicationCommand.run(
+                command,
+                arguments: Array(arguments.dropFirst()),
+                projectRoot: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            )
+        }
         if command == "profile" {
             guard arguments.count >= 2 else { throw PerformanceCommandError.usage }
             return try PearfyPerformanceCommand.profile(kind: arguments[1], arguments: Array(arguments.dropFirst(2)))
@@ -198,6 +205,9 @@ struct PearfyCLI {
       pearfy ai mcp <list|enable|disable <module>>
       pearfy sdk versions
       pearfy devkit <start|open|doctor|export> [options]
+      pearfy dev [--product <name>] [--configuration <debug|release>] [-- <app-arguments>]
+      pearfy start [--product <name>] [--configuration <debug|release>] [-- <app-arguments>]
+      pearfy build [--product <name>] [--configuration <debug|release>]
       pearfy --help
 
     `new` creates an executable package linked to a local Pearfy checkout.
@@ -215,6 +225,8 @@ struct PearfyCLI {
     `ai mcp` enables dynamic tools only for an installed module that implements them.
     `sdk versions` lists the v1.6 through v1.8 capability milestones in this checkout.
     `devkit` opens, checks, or exports data from an installed local DevKit dashboard.
+    `dev` watches Swift sources in this package and its Pearfy dependency, then restarts the debug app (requires watchexec).
+    `start` runs the release app; `build` builds the release product. Both accept `--product` for multi-executable packages.
     `benchmark` runs the DI baseline tool; profiling uses host-native tools.
     Set PEARFY_FRAMEWORK_PATH or pass --framework-path when using a relocated CLI.
     """

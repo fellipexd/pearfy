@@ -45,6 +45,7 @@
   "modules": [
     {
       "id": "http",
+      "packageTraits": ["Crypto", "Macros", "NIO"],
       "name": "Pearfy core and HTTP",
       "version": "workspace",
       "implementationStatus": "partial",
@@ -54,6 +55,7 @@
       "products": [
         "PearfyConfiguration",
         "PearfyContext",
+        "PearfyDI",
         "PearfyMacros",
         "PearfyNIO",
         "PearfyValidation",
@@ -69,10 +71,12 @@
         "Route/server/lifecycle registration is application code; package inspection cannot prove runtime wiring."
       ],
       "skill": "pearfy-core",
-      "skillVersion": "1.0.0",
+      "skillVersion": "1.1.0",
       "references": [
         ".agents/skills/pearfy-core/references/http-and-lifecycle.md",
-        ".agents/skills/pearfy-core/references/dependency-injection.md"
+        ".agents/skills/pearfy-core/references/dependency-injection.md",
+        ".agents/skills/pearfy-core/references/macros.md",
+        "docs/ARCHITECTURE.md"
       ],
       "cliCommands": [
         "pearfy new",
@@ -186,6 +190,7 @@
     },
     {
       "id": "social-postgres",
+      "packageTraits": ["Postgres"],
       "name": "Pearfy social PostgreSQL adapter",
       "version": "workspace",
       "implementationStatus": "partial",
@@ -292,9 +297,10 @@
         "Schema IR/models and migration artifacts are application-specific."
       ],
       "skill": "pearfy-data",
-      "skillVersion": "1.0.0",
+      "skillVersion": "1.1.0",
       "references": [
-        ".agents/skills/pearfy-data/references/schema-and-sql.md"
+        ".agents/skills/pearfy-data/references/schema-and-sql.md",
+        "docs/ARCHITECTURE.md"
       ],
       "cliCommands": [
         "pearfy add data"
@@ -358,6 +364,7 @@
     },
     {
       "id": "postgres",
+      "packageTraits": ["Postgres"],
       "name": "Pearfy PostgreSQL adapter",
       "version": "workspace",
       "implementationStatus": "partial",
@@ -408,6 +415,7 @@
     },
     {
       "id": "populate",
+      "packageTraits": ["Postgres"],
       "name": "PearfyPopulate",
       "version": "workspace",
       "implementationStatus": "partial",
@@ -558,6 +566,7 @@
     },
     {
       "id": "redis",
+      "packageTraits": ["Redis"],
       "name": "Pearfy Redis adapters",
       "version": "workspace",
       "implementationStatus": "partial",
@@ -920,6 +929,7 @@
     },
     {
       "id": "ledger",
+      "packageTraits": ["Postgres"],
       "name": "Pearfy ledger",
       "version": "workspace",
       "implementationStatus": "implemented",
@@ -1315,6 +1325,7 @@
     },
     {
       "id": "gameserver",
+      "packageTraits": ["Crypto"],
       "name": "Pearfy game server contracts",
       "version": "workspace",
       "implementationStatus": "partial",
@@ -1448,6 +1459,7 @@
     },
     {
       "id": "gameserver-transport",
+      "packageTraits": ["NIOSSL"],
       "name": "Pearfy game server transport",
       "version": "workspace",
       "implementationStatus": "partial",
@@ -1512,6 +1524,7 @@
     },
     {
       "id": "gameserver-grpc",
+      "packageTraits": ["GameServerGRPC"],
       "name": "Pearfy game server gRPC control plane",
       "version": "workspace",
       "implementationStatus": "partial",
@@ -1565,6 +1578,7 @@
     },
     {
       "id": "gameserver-agones",
+      "packageTraits": ["GameServerGRPC"],
       "name": "Pearfy game server Agones SDK integration",
       "version": "workspace",
       "implementationStatus": "partial",
@@ -1620,6 +1634,7 @@
     },
     {
       "id": "gameserver-redis-recovery",
+      "packageTraits": ["Redis", "NIOSSL"],
       "name": "Pearfy game server Redis recovery",
       "version": "workspace",
       "implementationStatus": "partial",

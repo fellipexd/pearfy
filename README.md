@@ -101,6 +101,9 @@ available locally through `scripts/test-unit.sh` and
 ```bash
 swift run pearfy new my-api
 cd my-api
+pearfy dev
+pearfy start
+pearfy build
 swift build
 swift run MyApi
 swift run pearfy benchmark
@@ -130,6 +133,15 @@ The scaffold uses an absolute local path to this Pearfy checkout; use
 Profiling uses `xcrun xctrace` when available; on this host CPU profiling uses
 `/usr/bin/sample` and memory profiling samples RSS with `ps`. Linux can use
 `perf`, `heaptrack`, or `valgrind`. See `swift run pearfy --help`.
+
+For container builds with persistent SwiftPM caches, see
+[Docker builds with BuildKit](docs/BUILDING-DOCKER.md).
+For public macro selection and their implemented limits, see
+[the Pearfy macro inventory](docs/MACROS.md).
+New applications default to Clean Architecture when no style is specified;
+the selected module profile remains independent. See
+[the architecture guide](docs/ARCHITECTURE.md) for layer boundaries and macro
+selection by actual semantics.
 
 `pearfy guardian verify` runs `swift build` and `scripts/test-unit.sh`, inspects
 service variables referenced by tests, and returns 0 (PASS), 1 (FAIL), or 2

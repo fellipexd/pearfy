@@ -30,6 +30,8 @@ public struct PearfyModuleManifest: Codable, Equatable, Sendable {
     public let summary: String
     public let requirements: [String]
     public let products: [String]
+    /// SwiftPM package traits required by the products in this module.
+    public let packageTraits: [String]
     public let capabilities: [String]
     public let configurationChecks: [String]
     public let skillID: String?
@@ -53,6 +55,7 @@ public struct PearfyModuleManifest: Codable, Equatable, Sendable {
         case summary
         case requirements = "requires"
         case products
+        case packageTraits
         case capabilities
         case configurationChecks
         case skillID = "skill"
@@ -78,6 +81,7 @@ public struct PearfyModuleManifest: Codable, Equatable, Sendable {
         summary = try values.decode(String.self, forKey: .summary)
         requirements = try values.decodeIfPresent([String].self, forKey: .requirements) ?? []
         products = try values.decodeIfPresent([String].self, forKey: .products) ?? []
+        packageTraits = try values.decodeIfPresent([String].self, forKey: .packageTraits) ?? []
         capabilities = try values.decodeIfPresent([String].self, forKey: .capabilities) ?? []
         configurationChecks = try values.decodeIfPresent([String].self, forKey: .configurationChecks) ?? []
         skillID = try values.decodeIfPresent(String.self, forKey: .skillID)
@@ -101,6 +105,8 @@ public struct PearfyModulePlan: Equatable, Sendable {
     public let plannedModules: [String]
     public let productsToAdd: [String]
     public let productsToRemove: [String]
+    public let packageTraitsToEnable: [String]
+    public let packageTraitsToDisable: [String]
 }
 
 public enum PearfyModuleManagerError: Error, Sendable, Equatable, CustomStringConvertible {
@@ -156,6 +162,8 @@ public struct PearfyModuleManager: Sendable {
     private let statusSemantics: PearfyModuleProjectStatusSemantics
     private let beginMarker = "// pearfy-modules:begin"
     private let endMarker = "// pearfy-modules:end"
+    private let traitsBeginMarker = "// pearfy-package-traits:begin"
+    private let traitsEndMarker = "// pearfy-package-traits:end"
 
     public init(registryData: Data? = nil) throws {
         let data: Data
@@ -284,13 +292,17 @@ public struct PearfyModuleManager: Sendable {
         let plannedResolved = try resolvedModules(for: planned)
         let currentProducts = products(for: currentResolved)
         let plannedProducts = products(for: plannedResolved)
+        let currentTraits = packageTraits(for: currentResolved)
+        let plannedTraits = packageTraits(for: plannedResolved)
         return PearfyModulePlan(
             action: "add",
             module: id,
             currentModules: selectedModules.sorted(),
             plannedModules: planned.sorted(),
             productsToAdd: plannedProducts.subtracting(currentProducts).sorted(),
-            productsToRemove: currentProducts.subtracting(plannedProducts).sorted()
+            productsToRemove: currentProducts.subtracting(plannedProducts).sorted(),
+            packageTraitsToEnable: plannedTraits.subtracting(currentTraits).sorted(),
+            packageTraitsToDisable: currentTraits.subtracting(plannedTraits).sorted()
         )
     }
 
@@ -311,7 +323,9 @@ public struct PearfyModuleManager: Sendable {
                 currentModules: selectedModules.sorted(),
                 plannedModules: selectedModules.sorted(),
                 productsToAdd: [],
-                productsToRemove: []
+                productsToRemove: [],
+                packageTraitsToEnable: [],
+                packageTraitsToDisable: []
             )
         }
         let plannedResolved = try resolvedModules(for: planned)
@@ -321,13 +335,17 @@ public struct PearfyModuleManager: Sendable {
         }
         let currentProducts = products(for: currentResolved)
         let plannedProducts = products(for: plannedResolved)
+        let currentTraits = packageTraits(for: currentResolved)
+        let plannedTraits = packageTraits(for: plannedResolved)
         return PearfyModulePlan(
             action: "remove",
             module: id,
             currentModules: selectedModules.sorted(),
             plannedModules: planned.sorted(),
             productsToAdd: plannedProducts.subtracting(currentProducts).sorted(),
-            productsToRemove: currentProducts.subtracting(plannedProducts).sorted()
+            productsToRemove: currentProducts.subtracting(plannedProducts).sorted(),
+            packageTraitsToEnable: plannedTraits.subtracting(currentTraits).sorted(),
+            packageTraitsToDisable: currentTraits.subtracting(plannedTraits).sorted()
         )
     }
 
@@ -358,7 +376,16 @@ public struct PearfyModuleManager: Sendable {
         guard try existingProductBlock(in: oldManifest) == productBlock(modules: currentResolved) else {
             throw PearfyModuleManagerError.packageDrift
         }
-        let updatedManifest = try replacingProductBlock(in: oldManifest, modules: plan.plannedModules)
+        let withProducts = try replacingProductBlock(in: oldManifest, modules: plan.plannedModules)
+        let updatedManifest: String
+        if oldManifest.contains(traitsBeginMarker) || oldManifest.contains(traitsEndMarker) {
+            guard try existingPackageTraitsBlock(in: oldManifest) == packageTraitsBlock(modules: currentResolved) else {
+                throw PearfyModuleManagerError.packageDrift
+            }
+            updatedManifest = try replacingPackageTraitsBlock(in: withProducts, modules: plan.plannedModules)
+        } else {
+            updatedManifest = try addingPackageTraitsToLegacyDependency(in: withProducts, modules: plan.plannedModules)
+        }
         let updatedLock = try lockfileData(modules: plan.plannedModules)
 
         try updatedLock.write(to: lockURL, options: .atomic)
@@ -393,9 +420,20 @@ public struct PearfyModuleManager: Sendable {
         let manifest = String(decoding: try Data(contentsOf: packageURL), as: UTF8.self)
         let expected = try productBlock(modules: resolved)
         let actual = try existingProductBlock(in: manifest)
-        guard expected == actual else {
+        let traitsAreCurrent: Bool
+        if manifest.contains(traitsBeginMarker) || manifest.contains(traitsEndMarker) {
+            traitsAreCurrent = try packageTraitsBlock(modules: resolved) == existingPackageTraitsBlock(in: manifest)
+        } else {
+            // Older CLI scaffolds relied on Pearfy's default traits. They remain
+            // manageable and are upgraded to explicit traits on the next change.
+            traitsAreCurrent = Self.legacyPearfyDependencyPattern.firstMatch(
+                in: manifest,
+                range: NSRange(manifest.startIndex..., in: manifest)
+            ) != nil
+        }
+        guard expected == actual, traitsAreCurrent else {
             throw PearfyModuleManagerError.invalidRegistry(
-                "Package.swift dependency block differs from .pearfy/modules.json (expected \(expected), found \(actual))"
+                "Package.swift Pearfy markers differ from .pearfy/modules.json (products expected \(expected), found \(actual); package traits are missing, stale, or malformed)"
             )
         }
         return lockfile.modules.sorted()
@@ -404,11 +442,15 @@ public struct PearfyModuleManager: Sendable {
     public func render(_ plan: PearfyModulePlan) -> String {
         let added = plan.productsToAdd.isEmpty ? "none" : plan.productsToAdd.joined(separator: ", ")
         let removed = plan.productsToRemove.isEmpty ? "none" : plan.productsToRemove.joined(separator: ", ")
+        let traitsEnabled = plan.packageTraitsToEnable.isEmpty ? "none" : plan.packageTraitsToEnable.joined(separator: ", ")
+        let traitsDisabled = plan.packageTraitsToDisable.isEmpty ? "none" : plan.packageTraitsToDisable.joined(separator: ", ")
         return """
         Module plan: \(plan.action) \(plan.module)
         Selected modules: \(plan.plannedModules.joined(separator: ", "))
         Products to add: \(added)
         Products to remove: \(removed)
+        SwiftPM traits to enable: \(traitsEnabled)
+        SwiftPM traits to disable: \(traitsDisabled)
         Changes are limited to Package.swift's Pearfy markers and .pearfy/modules.json.
         """
     }
@@ -472,6 +514,10 @@ public struct PearfyModuleManager: Sendable {
         Set(modules.flatMap { modulesByID[$0]?.products ?? [] })
     }
 
+    private func packageTraits(for modules: Set<String>) -> Set<String> {
+        Set(modules.flatMap { modulesByID[$0]?.packageTraits ?? [] })
+    }
+
     private func productBlock(modules: Set<String>) throws -> [String] {
         let productNames = products(for: modules).sorted()
         guard !productNames.isEmpty else { throw PearfyModuleManagerError.invalidRegistry("module graph has no products") }
@@ -480,10 +526,25 @@ public struct PearfyModuleManager: Sendable {
             + ["// pearfy-modules:end"]
     }
 
+    private func packageTraitsBlock(modules: Set<String>) throws -> [String] {
+        let traits = packageTraits(for: modules).sorted()
+        return [traitsBeginMarker] + traits.map { "\"\($0)\"," } + [traitsEndMarker]
+    }
+
     private func existingProductBlock(in manifest: String) throws -> [String] {
         let lines = manifest.components(separatedBy: .newlines)
         guard let start = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == beginMarker }),
               let end = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == endMarker }),
+              start < end else {
+            throw PearfyModuleManagerError.managedProjectRequired
+        }
+        return Array(lines[start...end]).map { $0.trimmingCharacters(in: .whitespaces) }
+    }
+
+    private func existingPackageTraitsBlock(in manifest: String) throws -> [String] {
+        let lines = manifest.components(separatedBy: .newlines)
+        guard let start = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == traitsBeginMarker }),
+              let end = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == traitsEndMarker }),
               start < end else {
             throw PearfyModuleManagerError.managedProjectRequired
         }
@@ -504,6 +565,50 @@ public struct PearfyModuleManager: Sendable {
         if end + 1 < lines.count { output += lines[(end + 1)...] }
         return output.joined(separator: "\n")
     }
+
+    private func replacingPackageTraitsBlock(in manifest: String, modules: [String]) throws -> String {
+        let lines = manifest.components(separatedBy: .newlines)
+        guard let start = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == traitsBeginMarker }),
+              let end = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == traitsEndMarker }),
+              start < end else {
+            throw PearfyModuleManagerError.managedProjectRequired
+        }
+        let resolved = try resolvedModules(for: Set(modules))
+        let replacement = try packageTraitsBlock(modules: resolved).map { "                \($0)" }
+        var output = Array(lines[..<start]) + replacement
+        if end + 1 < lines.count { output += lines[(end + 1)...] }
+        return output.joined(separator: "\n")
+    }
+
+    private func addingPackageTraitsToLegacyDependency(in manifest: String, modules: [String]) throws -> String {
+        let range = NSRange(manifest.startIndex..., in: manifest)
+        guard let match = Self.legacyPearfyDependencyPattern.firstMatch(in: manifest, range: range),
+              let pathRange = Range(match.range(at: 1), in: manifest) else {
+            throw PearfyModuleManagerError.packageDrift
+        }
+        let path = String(manifest[pathRange])
+        let resolved = try resolvedModules(for: Set(modules))
+        let traits = try packageTraitsBlock(modules: resolved).map { "                \($0)" }
+        let replacement = ([
+            ".package(",
+            "            name: \"Pearfy\",",
+            "            path: \(path),",
+            "            traits: ["
+        ] + traits + [
+            "            ]",
+            "        )"
+        ]).joined(separator: "\n")
+        guard let replacementRange = Range(match.range, in: manifest) else {
+            throw PearfyModuleManagerError.packageDrift
+        }
+        var output = manifest
+        output.replaceSubrange(replacementRange, with: replacement)
+        return output
+    }
+
+    private static let legacyPearfyDependencyPattern = try! NSRegularExpression(
+        pattern: #"\.package\(name:\s*"Pearfy",\s*path:\s*("(?:\\.|[^"\\])*")\)"#
+    )
 
     private static func isValidModuleID(_ id: String) -> Bool {
         guard let first = id.utf8.first, (97...122).contains(first) else { return false }

@@ -416,6 +416,22 @@ public struct PearfyProjectManifest: Codable, Equatable, Sendable {
             self.profile = profile
             self.decisions = decisions
         }
+
+        private enum CodingKeys: String, CodingKey {
+            case style
+            case profile
+            case decisions
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            style = try container.decodeIfPresent(String.self, forKey: .style) ?? "clean"
+            profile = try container.decode(String.self, forKey: .profile)
+            decisions = try container.decodeIfPresent(
+                [String: PearfyMigrationJSONValue].self,
+                forKey: .decisions
+            ) ?? [:]
+        }
     }
 
     public struct Migration: Codable, Equatable, Sendable {

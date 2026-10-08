@@ -48,6 +48,12 @@ public struct ProjectScaffolder: Sendable {
                 at: temporary.appendingPathComponent("Sources/\(moduleName)", isDirectory: true),
                 withIntermediateDirectories: true
             )
+            for layer in ["Domain", "Application", "Infrastructure", "Presentation"] {
+                try FileManager.default.createDirectory(
+                    at: temporary.appendingPathComponent("Sources/\(moduleName)/\(layer)", isDirectory: true),
+                    withIntermediateDirectories: true
+                )
+            }
             try FileManager.default.createDirectory(
                 at: temporary.appendingPathComponent(".pearfy", isDirectory: true),
                 withIntermediateDirectories: true
@@ -57,8 +63,13 @@ public struct ProjectScaffolder: Sendable {
             try PearfyModuleManager()
                 .initialLockfileData()
                 .write(to: temporary.appendingPathComponent(".pearfy/modules.json"), options: .atomic)
-            try Self.applicationSource(moduleName: moduleName)
-                .write(to: temporary.appendingPathComponent("Sources/\(moduleName)/main.swift"), atomically: true, encoding: .utf8)
+            for (path, source) in Self.applicationSources(moduleName: moduleName) {
+                try source.write(
+                    to: temporary.appendingPathComponent("Sources/\(moduleName)/\(path)"),
+                    atomically: true,
+                    encoding: .utf8
+                )
+            }
             try Self.readme(name: name, moduleName: moduleName)
                 .write(to: temporary.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
             try """
@@ -104,7 +115,17 @@ public struct ProjectScaffolder: Sendable {
             name: "\(swiftLiteral(name))",
             platforms: [.macOS(.v13)],
             dependencies: [
-                .package(name: "Pearfy", path: "\(swiftLiteral(pearfyPath))")
+                .package(
+                    name: "Pearfy",
+                    path: "\(swiftLiteral(pearfyPath))",
+                    traits: [
+                        // pearfy-package-traits:begin
+                        "Crypto",
+                        "Macros",
+                        "NIO",
+                        // pearfy-package-traits:end
+                    ]
+                )
             ],
             targets: [
                 .executableTarget(
@@ -113,6 +134,7 @@ public struct ProjectScaffolder: Sendable {
                         // pearfy-modules:begin
                         .product(name: "PearfyConfiguration", package: "Pearfy"),
                         .product(name: "PearfyContext", package: "Pearfy"),
+                        .product(name: "PearfyDI", package: "Pearfy"),
                         .product(name: "PearfyMacros", package: "Pearfy"),
                         .product(name: "PearfyNIO", package: "Pearfy"),
                         .product(name: "PearfyValidation", package: "Pearfy"),
@@ -126,53 +148,96 @@ public struct ProjectScaffolder: Sendable {
         """
     }
 
-    private static func applicationSource(moduleName: String) -> String {
-        """
-        import PearfyConfiguration
-        import PearfyContext
-        import PearfyMacros
-        import PearfyNIO
-        import PearfyValidation
-        import PearfyWeb
-
-        @RestController("/hello")
-        @PermitAll
-        struct GreetingController: Sendable {
-            @Get("/{name}")
-            func greeting(@PathVariable name: String) -> String {
-                "Hello, \\(name)!"
+    private static func applicationSources(moduleName: String) -> [(String, String)] {
+        [
+            ("main.swift", """
+            @main
+            struct \(moduleName) {
+                static func main() async throws {
+                    try await PearfyApplicationBootstrap.run()
+                }
             }
-        }
-
-        @main
-        struct \(moduleName) {
-            static func main() async throws {
-                let configuration = try ConfigurationLoader.load(
-                    defaults: ["http.host": "127.0.0.1", "http.port": "8080"]
-                )
-                let host = try configuration.string(forKey: "http.host")
-                let port = try configuration.value(forKey: "http.port", as: Int.self)
-                let router = HTTPRouter()
-                try await GreetingController.__pearfy_registerRoutes(in: router, instance: GreetingController())
-                let server = PearfyHTTPServer(router: router, host: host, port: port)
-                let context = ApplicationContext(
-                    configuration: configuration,
-                    lifecycle: [server]
-                )
-                try await context.start()
-                print("Listening on http://\\(host):\\(await server.boundPort() ?? port)")
-                await PearfyProcessSignals.waitForTermination()
-                try await context.stop()
+            """),
+            ("Domain/Greeting.swift", """
+            struct Greeting: Sendable {
+                let message: String
             }
-        }
-        """
+            """),
+            ("Application/GreetingService.swift", """
+            import PearfyDI
+            import PearfyMacros
+
+            @Service
+            struct GreetingService: Sendable {
+                func greet(name: String) -> Greeting {
+                    Greeting(message: "Hello, \\(name)!")
+                }
+            }
+            """),
+            ("Presentation/GreetingController.swift", """
+            import PearfyMacros
+            import PearfyWeb
+
+            @RestController("/hello")
+            @PermitAll
+            struct GreetingController: Sendable {
+                let service: GreetingService
+
+                @Get("/{name}")
+                func greeting(@PathVariable name: String) -> GreetingResponse {
+                    GreetingResponse(message: service.greet(name: name).message)
+                }
+            }
+
+            struct GreetingResponse: Codable, Sendable {
+                let message: String
+            }
+            """),
+            ("Infrastructure/PearfyApplicationBootstrap.swift", """
+            import PearfyConfiguration
+            import PearfyContext
+            import PearfyDI
+            import PearfyNIO
+            import PearfyWeb
+
+            enum PearfyApplicationBootstrap {
+                static func run() async throws {
+                    let configuration = try ConfigurationLoader.load(
+                        defaults: ["http.host": "127.0.0.1", "http.port": "8080"]
+                    )
+                    let host = try configuration.string(forKey: "http.host")
+                    let port = try configuration.value(forKey: "http.port", as: Int.self)
+
+                    let container = ServiceContainer()
+                    try await PearfyGeneratedRegistry.registerComponents(in: container)
+                    let service = try await container.resolve(GreetingService.self)
+
+                    let router = HTTPRouter()
+                    try await GreetingController.__pearfy_registerRoutes(
+                        in: router,
+                        instance: GreetingController(service: service)
+                    )
+                    let server = PearfyHTTPServer(router: router, host: host, port: port)
+                    let context = ApplicationContext(
+                        container: container,
+                        configuration: configuration,
+                        lifecycle: [server]
+                    )
+                    try await context.start()
+                    print("Listening on http://\\(host):\\(await server.boundPort() ?? port)")
+                    await PearfyProcessSignals.waitForTermination()
+                    try await context.stop()
+                }
+            }
+            """)
+        ]
     }
 
     private static func readme(name: String, moduleName: String) -> String {
         """
         # \(name)
 
-        A Pearfy HTTP application scaffold. Its route registration is generated from the controller macros.
+        A Pearfy HTTP application scaffold using Clean Architecture by default: domain, application, infrastructure, and presentation are separate. The use case is registered with `@Service`; generated component and route registries are wired in the composition root. No persistence repository is added because this starter does not persist data. Use `@Repository` for real infrastructure adapters, `@Entity` for persistence schema models, and `@ContractModel` for API schema contracts when the corresponding products are selected; there is no generic domain-model macro.
 
         ```bash
         swift build

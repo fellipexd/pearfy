@@ -31,6 +31,13 @@ does not write files. `sync` is a preview unless `--apply` is supplied. Baseline
 and migration commands preserve existing route progress and never rewrite
 application source files.
 
+The architecture style is separate from the business profile. New projects
+default to Clean Architecture (`clean`); adoption and baseline preserve a style
+already present in the Pearfy manifest and default to `clean` when that field
+is absent. Migration remains contract-first and does not rewrite legacy source.
+See [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) for layer boundaries and the
+current macro semantics.
+
 ## Project files
 
 - `pearfy.project.yml` — versioned traceability manifest. The CLI writes JSON,
@@ -61,7 +68,15 @@ build descriptors.
 Unsupported or ambiguous evidence remains review work instead of being guessed.
 
 The migration CLI only discovers and records contracts and route progress. It
-does not generate controllers or migrate database code. Update a route through
+does not generate controllers or migrate database code. `pearfy migrate status routes`
+and `pearfy migrate status elements` also classify available macro
+guidance as `applicable`, `not-applicable`, or `not-supported`; a recommendation
+does not rewrite source or assert semantic parity. Supported literal HTTP
+verbs prefer `@RestController` and the matching route macro when implementing
+the new endpoint. The generated route registrar must still be called explicitly.
+Parameter conversion, handler behavior, policy expressions, and persistence
+semantics require source review; unsupported cases stay open and include a
+reason. Update a route through
 `discovered → contracted → mapped → implemented`; `verified` is reserved for a
 passing E2E comparison. `finalize` refuses open/conflicting route contracts.
 

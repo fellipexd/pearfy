@@ -16,6 +16,8 @@ The current product contains HMAC JWT validation, API-key authentication, Bearer
 
 ## Rules
 
+For HTTP endpoints, prefer `@Authenticated`, `@PermitAll`, or `@RolesAllowed` when their route-level policy exactly matches the reviewed requirement. They declare route access policy; they do not authenticate credentials, configure identity providers, or install the required security middleware. Review `.agents/skills/pearfy-core/references/macros.md` for their scope.
+
 Default to deny, validate issuer/audience/time/signature according to the configured contract, and keep keys outside source, logs, contracts and mobile bundles. Legacy JWTs without `kid` require an explicitly configured single fallback key. Do not infer ownership from a request field or email address. Redact credentials and authorization headers from diagnostic records.
 
 ## Integrations and validation
