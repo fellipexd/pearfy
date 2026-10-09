@@ -311,13 +311,27 @@ public enum PearfyProjectLifecycleCommand {
         let selectedIDs = try selectedModuleIDs(root: projectRoot)
         let profile = try resolveProfile(manifest.architecture.profile, decisions: manifest.architecture.decisions)
         let missing = Set(profile.moduleIDs).subtracting(selectedIDs)
+        let macroReport = try PearfyMacroPolicyDiagnostics.check(projectRoot: projectRoot)
         if missing.isEmpty {
             print("PASS architecture: style \(manifest.architecture.style); profile \(profile.id) has required modules \(profile.moduleIDs.joined(separator: ", "))")
-            return 0
+        } else {
+            print("FAIL architecture: profile \(profile.id) is missing modules \(missing.sorted().joined(separator: ", "))")
+            print("Plan optional products with `pearfy modules plan --add <module>` before applying changes.")
         }
-        print("FAIL architecture: profile \(profile.id) is missing modules \(missing.sorted().joined(separator: ", "))")
-        print("Plan optional products with `pearfy modules plan --add <module>` before applying changes.")
-        return 1
+        if macroReport.findings.isEmpty && macroReport.isComplete {
+            print("PASS macro-policy: no direct HTTPRouter route declarations found under Sources/")
+        } else {
+            for finding in macroReport.findings {
+                print("REVIEW macro-policy: \(finding.path):\(finding.line): \(finding.guidance)")
+            }
+            if !macroReport.isComplete {
+                print("INCOMPLETE macro-policy: source scan skipped \(macroReport.skippedFiles) Swift file(s) because the source tree was missing, unreadable, or beyond configured scan limits.")
+            }
+            if !macroReport.findings.isEmpty {
+                print("Macro policy is advisory; this source scan does not prove route equivalence. Run `pearfy migrate status routes` for migrated route contracts.")
+            }
+        }
+        return missing.isEmpty ? 0 : 1
     }
 
     private static func migrate(arguments: [String], projectRoot: URL, environment: [String: String]) async throws -> Int32 {

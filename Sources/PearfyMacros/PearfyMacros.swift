@@ -45,6 +45,58 @@ public macro Column(
     renamedFrom: String? = nil
 ) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
 
+/// Describes the owning side of a many-to-one schema association. The macro
+/// emits schema metadata only; repositories remain responsible for data access.
+@attached(peer, names: named(__pearfy_marker))
+public macro ManyToOne(
+    targetTable: String,
+    column: String? = nil,
+    referencedColumn: String = "id",
+    foreignKeyName: String? = nil,
+    nullable: Bool? = nil,
+    primaryKey: Bool = false,
+    onUpdate: SchemaReferentialAction = .noAction,
+    onDelete: SchemaReferentialAction = .noAction
+) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
+
+/// Describes a one-to-one association. Without `mappedBy`, this side owns the
+/// unique foreign key; with `mappedBy`, it is the inverse side.
+@attached(peer, names: named(__pearfy_marker))
+public macro OneToOne(
+    targetTable: String,
+    mappedBy: String? = nil,
+    column: String? = nil,
+    referencedColumn: String = "id",
+    foreignKeyName: String? = nil,
+    nullable: Bool? = nil,
+    primaryKey: Bool = false,
+    onUpdate: SchemaReferentialAction = .noAction,
+    onDelete: SchemaReferentialAction = .noAction
+) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
+
+/// Describes the inverse side of a one-to-many association stored as a Swift
+/// array. `mappedBy` names the owning `@ManyToOne` property on the target.
+@attached(peer, names: named(__pearfy_marker))
+public macro OneToMany(targetTable: String, mappedBy: String) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
+
+/// Describes an owning or inverse many-to-many schema association. The owning
+/// side creates a junction table; the inverse side names it with `mappedBy`.
+/// The macro describes schema only and does not add runtime ORM behavior.
+@attached(peer, names: named(__pearfy_marker))
+public macro ManyToMany(
+    targetTable: String,
+    mappedBy: String? = nil,
+    joinTable: String? = nil,
+    joinColumn: String? = nil,
+    inverseJoinColumn: String? = nil,
+    referencedColumn: String = "id",
+    inverseReferencedColumn: String = "id",
+    joinForeignKeyName: String? = nil,
+    inverseForeignKeyName: String? = nil,
+    onUpdate: SchemaReferentialAction = .noAction,
+    onDelete: SchemaReferentialAction = .noAction
+) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
+
 @attached(peer, names: named(__pearfy_marker))
 public macro ContractField(name: String? = nil, required: Bool? = nil) = #externalMacro(module: "PearfyMacrosImpl", type: "MarkerMacro")
 

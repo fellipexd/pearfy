@@ -15,14 +15,31 @@ import Testing
     _ = try ProjectScaffolder(frameworkRoot: frameworkRoot).createProject(named: "sample-api", at: destination)
 
     let manifest = try String(contentsOf: destination.appendingPathComponent("Package.swift"), encoding: .utf8)
-    let source = try String(contentsOf: destination.appendingPathComponent("Sources/SampleApi/main.swift"), encoding: .utf8)
-    #expect(manifest.contains(".package(name: \"Pearfy\", path:"))
+    let service = try String(contentsOf: destination.appendingPathComponent("Sources/SampleApi/Application/GreetingService.swift"), encoding: .utf8)
+    let controller = try String(contentsOf: destination.appendingPathComponent("Sources/SampleApi/Presentation/GreetingController.swift"), encoding: .utf8)
+    let bootstrap = try String(contentsOf: destination.appendingPathComponent("Sources/SampleApi/Infrastructure/PearfyApplicationBootstrap.swift"), encoding: .utf8)
+    let readme = try String(contentsOf: destination.appendingPathComponent("README.md"), encoding: .utf8)
+    #expect(manifest.contains(".package("))
+    #expect(manifest.contains("path: \"\(frameworkRoot.path)\""))
+    #expect(manifest.contains("traits: ["))
+    #expect(manifest.contains("pearfy-package-traits:begin"))
+    #expect(manifest.contains("\"Crypto\","))
+    #expect(!manifest.contains("\"GameServerGRPC\","))
     #expect(manifest.contains("PearfyDiscoveryPlugin"))
     #expect(manifest.contains("PearfyNIO"))
+    #expect(manifest.contains(".product(name: \"PearfyDI\", package: \"Pearfy\")"))
     #expect(manifest.contains("pearfy-modules:begin"))
     #expect(FileManager.default.fileExists(atPath: destination.appendingPathComponent(".pearfy/modules.json").path))
-    #expect(source.contains("__pearfy_registerRoutes"))
-    #expect(source.contains("@RestController"))
+    #expect(service.contains("@Service"))
+    #expect(controller.contains("@RestController"))
+    #expect(controller.contains("@Get(\"/{name}\")"))
+    #expect(controller.contains("@PathVariable name: String"))
+    #expect(controller.contains("@PermitAll"))
+    #expect(bootstrap.contains("PearfyGeneratedRegistry.registerComponents(in: container)"))
+    #expect(bootstrap.contains("GreetingController.__pearfy_registerRoutes("))
+    #expect(!bootstrap.contains("router.get("))
+    #expect(readme.contains("Clean Architecture by default"))
+    #expect(readme.contains("No persistence repository is added"))
 }
 
 @Test func moduleManagerPlansDependenciesAndAppliesOnlyManagedPackageProducts() throws {
@@ -43,6 +60,7 @@ import Testing
 
     let postgresPlan = try manager.planAdding("postgres", to: ["http"])
     #expect(postgresPlan.productsToAdd == ["PearfyData", "PearfyPostgres", "PearfyTransactions"])
+    #expect(postgresPlan.packageTraitsToEnable == ["Postgres"])
     try manager.apply(postgresPlan, to: projectRoot)
     #expect(try manager.doctor(projectRoot: projectRoot) == ["http", "postgres"])
     let repeatedPostgresPlan = try manager.planAdding("postgres", to: ["http", "postgres"])
@@ -68,6 +86,31 @@ import Testing
     let packageManifest = try String(contentsOf: projectRoot.appendingPathComponent("Package.swift"), encoding: .utf8)
     #expect(packageManifest.contains(".product(name: \"PearfyData\", package: \"Pearfy\")"))
     #expect(packageManifest.contains(".product(name: \"PearfyCloud\", package: \"Pearfy\")"))
+    #expect(packageManifest.contains("\"Postgres\","))
+    #expect(!packageManifest.contains("\"GameServerGRPC\","))
+
+    let grpcPlan = try manager.planAdding("gameserver-grpc", to: ["http"])
+    #expect(grpcPlan.packageTraitsToEnable == ["GameServerGRPC"])
+    #expect(grpcPlan.productsToAdd.contains("PearfyGameServer"))
+    #expect(grpcPlan.productsToAdd.contains("PearfyGameServerGRPC"))
+
+    guard let packageStart = packageManifest.range(of: ".package("),
+          let packageEnd = packageManifest.range(of: "\n        )", range: packageStart.lowerBound..<packageManifest.endIndex) else {
+        Issue.record("Expected generated multiline Pearfy package dependency")
+        return
+    }
+    var legacyManifest = packageManifest
+    legacyManifest.replaceSubrange(
+        packageStart.lowerBound..<packageEnd.upperBound,
+        with: ".package(name: \"Pearfy\", path: \"\(frameworkRoot.path)\")"
+    )
+    try legacyManifest.write(to: projectRoot.appendingPathComponent("Package.swift"), atomically: true, encoding: .utf8)
+    #expect(try manager.doctor(projectRoot: projectRoot) == ["ai", "http", "postgres"])
+    let legacyUpgradePlan = try manager.planAdding("ai", to: ["ai", "http", "postgres"])
+    try manager.apply(legacyUpgradePlan, to: projectRoot)
+    let upgradedManifest = try String(contentsOf: projectRoot.appendingPathComponent("Package.swift"), encoding: .utf8)
+    #expect(upgradedManifest.contains("pearfy-package-traits:begin"))
+    #expect(upgradedManifest.contains("\"Postgres\","))
 }
 
 @Test func projectScaffolderRejectsExistingDestinationsWithoutOverwriting() throws {

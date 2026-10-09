@@ -281,7 +281,7 @@
       "version": "workspace",
       "implementationStatus": "partial",
       "available": true,
-      "summary": "Parameterized SQL, schema IR and initial PostgreSQL migration planning",
+      "summary": "Parameterized SQL, relationship-aware schema IR and PostgreSQL migration planning",
       "requires": [
         "http"
       ],
@@ -291,7 +291,8 @@
       "capabilities": [
         "Safe SQL builders",
         "Schema IR/fingerprint",
-        "Migration plan generation"
+        "Migration plan generation from discovered SchemaEntity metadata",
+        "Many-to-one, one-to-one, one-to-many and many-to-many relationship schema metadata"
       ],
       "configurationChecks": [
         "Schema IR/models and migration artifacts are application-specific."
@@ -303,7 +304,8 @@
         "docs/ARCHITECTURE.md"
       ],
       "cliCommands": [
-        "pearfy add data"
+        "pearfy add data",
+        "pearfy migrations generate --product <SwiftPM-product> | --model <SchemaIR.json>"
       ],
       "contracts": [
         "Sources/PearfyData/SQLQuery.swift",

@@ -25,6 +25,17 @@ public struct EntityMacro: MemberMacro {
             return []
         }
         if argument.as(StringLiteralExprSyntax.self) == nil {
+            let hasRelationship = structure.memberBlock.members.contains { member in
+                guard let variable = member.decl.as(VariableDeclSyntax.self) else { return false }
+                return attributes(on: variable).contains { ["ManyToOne", "OneToOne", "OneToMany", "ManyToMany"].contains(attributeName($0)) }
+            }
+            if hasRelationship {
+                context.diagnose(Diagnostic(
+                    node: Syntax(node),
+                    message: EntityMacroMessage("relationship macros require @Entity(\"table\") so Pearfy can validate and materialize their schema metadata")
+                ))
+                return []
+            }
             return [DeclSyntax(stringLiteral: """
             static var __pearfy_schema: PearfyData.SchemaEntity {
                 \(argument.trimmedDescription)
@@ -40,6 +51,7 @@ public struct EntityMacro: MemberMacro {
         }
 
         var columns: [String] = []
+        var relationships: [String] = []
         for member in structure.memberBlock.members {
             guard let variable = member.decl.as(VariableDeclSyntax.self) else { continue }
             for binding in variable.bindings {
@@ -65,12 +77,140 @@ public struct EntityMacro: MemberMacro {
                     return []
                 }
 
-                let attributes = variable.attributes.compactMap { element -> AttributeSyntax? in
-                    guard case .attribute(let attribute) = element else { return nil }
-                    return attribute
-                }
+                let attributes = attributes(on: variable)
                 let idAttribute = attributes.first(where: { attributeName($0) == "ID" })
                 let columnAttribute = attributes.first(where: { attributeName($0) == "Column" })
+                let relationAttributes = attributes.filter { ["ManyToOne", "OneToOne", "OneToMany", "ManyToMany"].contains(attributeName($0)) }
+                guard relationAttributes.count <= 1 else {
+                    context.diagnose(Diagnostic(node: Syntax(binding), message: EntityMacroMessage("a property can declare only one relationship macro")))
+                    return []
+                }
+                if let relationship = relationAttributes.first {
+                    guard variable.bindings.count == 1, idAttribute == nil, columnAttribute == nil else {
+                        context.diagnose(Diagnostic(node: Syntax(binding), message: EntityMacroMessage("relationship properties cannot combine @ID or @Column; use primaryKey: true on an owning relationship to include its foreign-key column in the entity key")))
+                        return []
+                    }
+                    guard let targetTable = stringArgument("targetTable", in: relationship), !targetTable.isEmpty else {
+                        context.diagnose(Diagnostic(node: Syntax(relationship), message: EntityMacroMessage("relationship macros require a non-empty literal targetTable")))
+                        return []
+                    }
+                    let kind = attributeName(relationship)
+                    let rawType = annotation.type.trimmedDescription
+                    let optional = rawType.hasSuffix("?")
+                    let baseType = optional ? String(rawType.dropLast()) : rawType
+                    let mappedBy = stringArgument("mappedBy", in: relationship)
+                    let inverse = mappedBy != nil
+                    let relationshipPrimaryKey = boolArgument("primaryKey", in: relationship) ?? false
+                    if Self.argument("primaryKey", in: relationship) != nil,
+                       boolArgument("primaryKey", in: relationship) == nil {
+                        context.diagnose(Diagnostic(node: Syntax(relationship), message: EntityMacroMessage("primaryKey must be a literal true or false")))
+                        return []
+                    }
+                    let isCollection = kind == "OneToMany" || kind == "ManyToMany"
+                    let relatedValueType = isCollection ? arrayElementType(baseType) : baseType
+                    if let relatedValueType, schemaType(for: relatedValueType, precision: nil, scale: nil) != nil {
+                        context.diagnose(Diagnostic(node: Syntax(annotation.type), message: EntityMacroMessage("relationship properties must reference an entity type, not a scalar schema type")))
+                        return []
+                    }
+                    if kind == "OneToMany" || kind == "ManyToMany" {
+                        guard arrayElementType(baseType) != nil, kind == "ManyToMany" || mappedBy != nil else {
+                            context.diagnose(Diagnostic(node: Syntax(annotation.type), message: EntityMacroMessage(kind == "OneToMany" ? "@OneToMany requires an array property and an explicit mappedBy" : "@ManyToMany requires an array property")))
+                            return []
+                        }
+                    } else {
+                        guard arrayElementType(baseType) == nil else {
+                            context.diagnose(Diagnostic(node: Syntax(annotation.type), message: EntityMacroMessage("@\(kind) requires one entity value, optionally wrapped in Optional")))
+                            return []
+                        }
+                    }
+                    if kind == "ManyToOne", mappedBy != nil {
+                        context.diagnose(Diagnostic(node: Syntax(relationship), message: EntityMacroMessage("@ManyToOne owns its foreign key and does not accept mappedBy")))
+                        return []
+                    }
+                    if relationshipPrimaryKey {
+                        guard kind == "ManyToOne" || kind == "OneToOne", !inverse else {
+                            context.diagnose(Diagnostic(node: Syntax(relationship), message: EntityMacroMessage("primaryKey: true is supported only on an owning @ManyToOne or @OneToOne relationship")))
+                            return []
+                        }
+                        let nullable = boolArgument("nullable", in: relationship) ?? optional
+                        guard !nullable else {
+                            context.diagnose(Diagnostic(node: Syntax(relationship), message: EntityMacroMessage("a relationship primary-key column must be non-null; use a non-optional property or nullable: false")))
+                            return []
+                        }
+                    }
+                    if kind == "OneToMany" {
+                        let invalidOwnerOptions = ["column", "referencedColumn", "foreignKeyName", "nullable", "primaryKey", "onUpdate", "onDelete"].contains { label in
+                            Self.argument(label, in: relationship) != nil
+                        }
+                        if invalidOwnerOptions {
+                            context.diagnose(Diagnostic(node: Syntax(relationship), message: EntityMacroMessage("@OneToMany is inverse-only; configure the foreign key on the owning @ManyToOne")))
+                            return []
+                        }
+                    } else if kind == "OneToOne", inverse {
+                        let invalidOwnerOptions = ["column", "referencedColumn", "foreignKeyName", "nullable", "primaryKey", "onUpdate", "onDelete"].contains { label in
+                            Self.argument(label, in: relationship) != nil
+                        }
+                        if invalidOwnerOptions {
+                            context.diagnose(Diagnostic(node: Syntax(relationship), message: EntityMacroMessage("inverse @OneToOne cannot configure owner-side foreign-key options")))
+                            return []
+                        }
+                    }
+                    let onUpdate = referentialAction("onUpdate", in: relationship, context: context)
+                    let onDelete = referentialAction("onDelete", in: relationship, context: context)
+                    guard onUpdate != nil, onDelete != nil else { return [] }
+                    let nullable = boolArgument("nullable", in: relationship) ?? optional
+                    let field = pattern.identifier.text
+                    let schemaKind: String = switch kind {
+                    case "ManyToOne": ".manyToOne"
+                    case "OneToOne": ".oneToOne"
+                    case "OneToMany": ".oneToMany"
+                    default: ".manyToMany"
+                    }
+                    let relationKind = schemaKind
+                    let defaultColumn = kind == "OneToMany" || kind == "ManyToMany" || inverse ? "nil" : stringArgument("column", in: relationship).map { "\"\(swiftString($0))\"" } ?? "nil"
+                    let referencedColumn = stringArgument("referencedColumn", in: relationship).map { "\"\(swiftString($0))\"" } ?? "\"id\""
+                    let foreignKeyNameLabel = kind == "ManyToMany" ? "joinForeignKeyName" : "foreignKeyName"
+                    let foreignKeyName = stringArgument(foreignKeyNameLabel, in: relationship).map { "\"\(swiftString($0))\"" } ?? "nil"
+                    let manyToManyOptions = kind == "ManyToMany"
+                    let optionOrNil: (String) -> String = { label in
+                        guard manyToManyOptions, !inverse, let value = stringArgument(label, in: relationship) else { return "nil" }
+                        return "\"\(swiftString(value))\""
+                    }
+                    let inverseReferencedColumn = manyToManyOptions && !inverse
+                        ? stringArgument("inverseReferencedColumn", in: relationship).map { "\"\(swiftString($0))\"" } ?? "\"id\""
+                        : "nil"
+                    let inverseForeignKeyName = optionOrNil("inverseForeignKeyName")
+                    if manyToManyOptions && inverse {
+                        let ownerOptions = ["joinTable", "joinColumn", "inverseJoinColumn", "referencedColumn", "inverseReferencedColumn", "joinForeignKeyName", "inverseForeignKeyName", "onUpdate", "onDelete"].contains { label in
+                            Self.argument(label, in: relationship) != nil
+                        }
+                        if ownerOptions {
+                            context.diagnose(Diagnostic(node: Syntax(relationship), message: EntityMacroMessage("inverse @ManyToMany cannot configure join-table or foreign-key options")))
+                            return []
+                        }
+                    }
+                    relationships.append("""
+                    PearfyData.SchemaRelationship(
+                        field: "\(swiftString(field))",
+                        kind: \(relationKind),
+                        targetTable: "\(swiftString(targetTable))",
+                        mappedBy: \(mappedBy.map { "\"\(swiftString($0))\"" } ?? "nil"),
+                        column: \(defaultColumn),
+                        referencedColumn: \(referencedColumn),
+                        foreignKeyName: \(foreignKeyName),
+                        nullable: \(nullable),
+                        primaryKey: \(relationshipPrimaryKey),
+                        onUpdate: \(onUpdate!),
+                        onDelete: \(onDelete!),
+                        joinTable: \(optionOrNil("joinTable")),
+                        joinColumn: \(optionOrNil("joinColumn")),
+                        inverseJoinColumn: \(optionOrNil("inverseJoinColumn")),
+                        inverseReferencedColumn: \(inverseReferencedColumn),
+                        inverseForeignKeyName: \(inverseForeignKeyName)
+                    )
+                    """)
+                    continue
+                }
                 let dbName = columnAttribute.flatMap { stringArgument("name", in: $0) } ?? pattern.identifier.text
                 let swiftType = annotation.type.trimmedDescription
                 let isOptional = swiftType.hasSuffix("?")
@@ -83,7 +223,7 @@ public struct EntityMacro: MemberMacro {
                 ) else {
                     context.diagnose(Diagnostic(
                         node: Syntax(annotation.type),
-                        message: EntityMacroMessage("unsupported @Entity property type '\(swiftType)'")
+                    message: EntityMacroMessage("unsupported @Entity property type '\(swiftType)'; object and collection associations require a supported relationship macro, and other custom mappings require an explicit SchemaEntity model")
                     ))
                     return []
                 }
@@ -130,6 +270,8 @@ public struct EntityMacro: MemberMacro {
         static var __pearfy_schema: PearfyData.SchemaEntity {
             PearfyData.SchemaEntity(table: "\(swiftString(table))", columns: [
                 \(columns.joined(separator: ",\n                "))
+            ], relationships: [
+                \(relationships.joined(separator: ",\n                "))
             ])
         }
         """)]
@@ -242,6 +384,32 @@ public struct EntityMacro: MemberMacro {
             value += string.content.text
         }
         return value
+    }
+
+    private static func arrayElementType(_ type: String) -> String? {
+        let trimmed = type.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.first == "[", trimmed.last == "]" {
+            return String(trimmed.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if trimmed.hasPrefix("Array<"), trimmed.hasSuffix(">") {
+            return String(trimmed.dropFirst(6).dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return nil
+    }
+
+    private static func referentialAction(
+        _ label: String,
+        in attribute: AttributeSyntax,
+        context: some MacroExpansionContext
+    ) -> String? {
+        guard let expression = argument(label, in: attribute) else { return ".noAction" }
+        let action = expression.trimmedDescription.split(separator: ".").last.map(String.init) ?? ""
+        let allowed: Set<String> = ["noAction", "restrict", "cascade", "setNull", "setDefault"]
+        guard allowed.contains(action) else {
+            context.diagnose(Diagnostic(node: Syntax(expression), message: EntityMacroMessage("unsupported referential action '\(expression.trimmedDescription)'")))
+            return nil
+        }
+        return "PearfyData.SchemaReferentialAction.\(action)"
     }
 
     private static func firstArgument(in attribute: AttributeSyntax) -> ExprSyntax? {

@@ -211,6 +211,8 @@ public enum PearfyMigrationsCommand {
 
     private static func generate(options: [String], projectRoot: URL) throws {
         var modelPath = ".pearfy/schema.json"
+        var previousModelPath: String?
+        var productName: String?
         var outputPath = "Migrations"
         var migrationID: String?
         var replaceCatalog = false
@@ -218,7 +220,7 @@ public enum PearfyMigrationsCommand {
         var index = 0
         while index < options.count {
             let option = options[index]
-            guard ["--model", "--output", "--id", "--replace-catalog"].contains(option) else {
+            guard ["--model", "--previous-model", "--product", "--output", "--id", "--replace-catalog"].contains(option) else {
                 throw PearfyMigrationsCommandError.unknownOption(option)
             }
             guard seen.insert(option).inserted else {
@@ -232,6 +234,8 @@ public enum PearfyMigrationsCommand {
             guard index + 1 < options.count else { throw PearfyMigrationsCommandError.invalidOptions }
             switch option {
             case "--model": modelPath = options[index + 1]
+            case "--previous-model": previousModelPath = options[index + 1]
+            case "--product": productName = options[index + 1]
             case "--output": outputPath = options[index + 1]
             case "--id": migrationID = options[index + 1]
             default: throw PearfyMigrationsCommandError.unknownOption(option)
@@ -244,6 +248,16 @@ public enum PearfyMigrationsCommand {
         }
         _ = try migrationVersion(migrationID)
         let modelURL = URL(fileURLWithPath: modelPath, relativeTo: projectRoot).standardizedFileURL
+        let previousModelURL = previousModelPath.map { URL(fileURLWithPath: $0, relativeTo: projectRoot).standardizedFileURL }
+        let outputURL = URL(fileURLWithPath: outputPath, relativeTo: projectRoot).standardizedFileURL
+        guard !isWithin(modelURL, of: outputURL),
+              previousModelURL != modelURL,
+              previousModelURL.map({ !isWithin($0, of: outputURL) }) ?? true else {
+            throw PearfyMigrationsCommandError.overlappingPaths
+        }
+        if let productName {
+            try exportSchema(from: productName, to: modelURL, projectRoot: projectRoot)
+        }
         let modelData = try Data(contentsOf: modelURL)
         let model: SchemaIR
         do {
@@ -252,7 +266,17 @@ public enum PearfyMigrationsCommand {
             throw PearfyMigrationsCommandError.invalidModelSchema(modelURL.path)
         }
 
-        let plan = try PostgresSchemaCompiler().plan(from: nil, to: model)
+        let previousModel: SchemaIR?
+        if let previousModelURL {
+            do {
+                previousModel = try JSONDecoder().decode(SchemaIR.self, from: Data(contentsOf: previousModelURL))
+            } catch {
+                throw PearfyMigrationsCommandError.invalidModelSchema(previousModelURL.path)
+            }
+        } else {
+            previousModel = nil
+        }
+        let plan = try PostgresSchemaCompiler().plan(from: previousModel, to: model)
         guard !plan.upStatements.isEmpty else {
             throw PearfyMigrationsCommandError.emptyGeneratedSchema(modelURL.path)
         }
@@ -261,11 +285,6 @@ public enum PearfyMigrationsCommand {
             id: migrationID,
             up: SQLMigrationCommand(sql: sql)
         )
-        let outputURL = URL(fileURLWithPath: outputPath, relativeTo: projectRoot).standardizedFileURL
-        guard !isWithin(modelURL, of: outputURL) else {
-            throw PearfyMigrationsCommandError.overlappingPaths
-        }
-
         let outputExists = FileManager.default.fileExists(atPath: outputURL.path)
         if outputExists {
             try validateDirectory(outputURL, purpose: "migration catalog output")
@@ -311,6 +330,26 @@ public enum PearfyMigrationsCommand {
         print("Generated Pearfy migration \(migrationID) from \(modelURL.path) at \(artifactURL.path).")
         print("Model fingerprint: \(try model.fingerprint())")
         print("No database connection or migration execution was performed.")
+    }
+
+    private static func exportSchema(from productName: String, to modelURL: URL, projectRoot: URL) throws {
+        guard !productName.isEmpty, !productName.contains("/") else {
+            throw PearfyMigrationsCommandError.invalidSchemaProduct(productName)
+        }
+        try FileManager.default.createDirectory(at: modelURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [
+            "swift", "run", "--package-path", projectRoot.path,
+            productName, "--pearfy-export-schema", modelURL.path
+        ]
+        process.currentDirectoryURL = projectRoot
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationReason == .exit, process.terminationStatus == 0,
+              FileManager.default.fileExists(atPath: modelURL.path) else {
+            throw PearfyMigrationsCommandError.schemaExportFailed(productName)
+        }
     }
 
     private static func apply(options: [String], projectRoot: URL, environment: [String: String]) async throws {
@@ -510,11 +549,13 @@ private enum PearfyMigrationsCommandError: Error, Sendable, CustomStringConverti
     case generatedMigrationIDRequired
     case invalidModelSchema(String)
     case emptyGeneratedSchema(String)
+    case invalidSchemaProduct(String)
+    case schemaExportFailed(String)
 
     var description: String {
         switch self {
         case .usage:
-            "Usage: pearfy migrations generate --id <version_name> [--model <SchemaIR.json>] [--output <directory>] [--replace-catalog] | pearfy migrations import-java --source <directory> [--output <directory>] [--remove-source] | pearfy migrations apply --environment local [--directory <directory>]"
+            "Usage: pearfy migrations generate --id <version_name> [--model <SchemaIR.json>] [--previous-model <SchemaIR.json>] [--product <SwiftPM-product>] [--output <directory>] [--replace-catalog] | pearfy migrations import-java --source <directory> [--output <directory>] [--remove-source] | pearfy migrations apply --environment local [--directory <directory>]"
         case .unknownOption(let option): "unknown option: \(option)"
         case .duplicateOption(let option): "option provided more than once: \(option)"
         case .missingValue(let option): "missing value for \(option)"
@@ -543,6 +584,8 @@ private enum PearfyMigrationsCommandError: Error, Sendable, CustomStringConverti
         case .generatedMigrationIDRequired: "migration generation requires a numeric --id such as 000051_embersquare_baseline"
         case .invalidModelSchema(let path): "invalid Pearfy SchemaIR model: \(path)"
         case .emptyGeneratedSchema(let path): "Pearfy SchemaIR model generates no DDL: \(path)"
+        case .invalidSchemaProduct(let product): "invalid SwiftPM product for schema export: \(product)"
+        case .schemaExportFailed(let product): "schema export failed for product '\(product)'; implement --pearfy-export-schema <path> using PearfyGeneratedSchemaRegistry.entities"
         }
     }
 }

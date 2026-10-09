@@ -223,6 +223,154 @@ import Testing
     try await database.stop()
 }
 
+@Test func postgresSchemaCompilerAppliesRelationshipDDLToRealPostgres() async throws {
+    guard let host = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_HOST"] else { return }
+    let port = Int(ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_PORT"] ?? "5432") ?? 5432
+    let username = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_USER"] ?? "postgres"
+    let databaseName = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_DATABASE"] ?? username
+    let password = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_PASSWORD"]
+    let suffix = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+    let parentTable = "pearfy_rel_parent_\(suffix)"
+    let childTable = "pearfy_rel_child_\(suffix)"
+    let parent = try SQLIdentifier(parentTable)
+    let child = try SQLIdentifier(childTable)
+    var configuration = PostgresClient.Configuration(
+        host: host, port: port, username: username, password: password,
+        database: databaseName, tls: .disable
+    )
+    configuration.options.maximumConnections = 1
+    configuration.options.minimumConnections = 0
+    let database = PearfyPostgresDatabase(configuration: configuration)
+    try await database.start()
+    do {
+        let schema = try SchemaIR(entities: [
+            SchemaEntity(table: parentTable, columns: [SchemaColumn(name: "id", type: .uuid, primaryKey: true)]),
+            SchemaEntity(table: childTable, columns: [SchemaColumn(name: "id", type: .uuid, primaryKey: true)], relationships: [
+                SchemaRelationship(field: "parent", kind: .manyToOne, targetTable: parentTable, nullable: false, onDelete: .cascade)
+            ])
+        ])
+        let plan = try PostgresSchemaCompiler().plan(from: nil, to: schema)
+        for statement in plan.upStatements { try await database.execute(SQLQuery(unsafeSQL: statement)) }
+
+        let parentID = UUID()
+        let childID = UUID()
+        try await database.execute(SQLQuery(unsafeSQL: "INSERT INTO \(parent) (id) VALUES ($1)", parameters: [.uuid(parentID)]))
+        try await database.execute(SQLQuery(unsafeSQL: "INSERT INTO \(child) (id, parent_id) VALUES ($1, $2)", parameters: [.uuid(childID), .uuid(parentID)]))
+        try await database.execute(SQLQuery(unsafeSQL: "DELETE FROM \(parent) WHERE id = $1", parameters: [.uuid(parentID)]))
+        #expect(try await database.queryStrings(SQLQuery(unsafeSQL: "SELECT id::TEXT AS id FROM \(child)"), column: "id").isEmpty)
+        try await database.execute(SQLQuery(unsafeSQL: "DROP TABLE \(child)"))
+        try await database.execute(SQLQuery(unsafeSQL: "DROP TABLE \(parent)"))
+    } catch {
+        try? await database.execute(SQLQuery(unsafeSQL: "DROP TABLE IF EXISTS \(child)"))
+        try? await database.execute(SQLQuery(unsafeSQL: "DROP TABLE IF EXISTS \(parent)"))
+        try? await database.stop()
+        throw error
+    }
+    try await database.stop()
+}
+
+@Test func postgresSchemaCompilerAppliesRelationshipPrimaryKeyToRealPostgres() async throws {
+    guard let host = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_HOST"] else { return }
+    let port = Int(ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_PORT"] ?? "5432") ?? 5432
+    let username = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_USER"] ?? "postgres"
+    let databaseName = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_DATABASE"] ?? username
+    let password = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_PASSWORD"]
+    let suffix = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+    let accountTable = "pearfy_pk_account_\(suffix)"
+    let projectionTable = "pearfy_pk_projection_\(suffix)"
+    let account = try SQLIdentifier(accountTable)
+    let projection = try SQLIdentifier(projectionTable)
+    var configuration = PostgresClient.Configuration(
+        host: host, port: port, username: username, password: password,
+        database: databaseName, tls: .disable
+    )
+    configuration.options.maximumConnections = 1
+    configuration.options.minimumConnections = 0
+    let database = PearfyPostgresDatabase(configuration: configuration)
+    try await database.start()
+    do {
+        let schema = try SchemaIR(entities: [
+            SchemaEntity(table: accountTable, columns: [SchemaColumn(name: "id", type: .uuid, primaryKey: true)]),
+            SchemaEntity(table: projectionTable, columns: [
+                SchemaColumn(name: "currency", type: .text, primaryKey: true),
+                SchemaColumn(name: "scale", type: .integer, primaryKey: true)
+            ], relationships: [
+                SchemaRelationship(field: "account", kind: .manyToOne, targetTable: accountTable, column: "account_id", primaryKey: true)
+            ])
+        ])
+        let plan = try PostgresSchemaCompiler().plan(from: nil, to: schema)
+        for statement in plan.upStatements { try await database.execute(SQLQuery(unsafeSQL: statement)) }
+
+        let accountID = UUID()
+        try await database.execute(SQLQuery(unsafeSQL: "INSERT INTO \(account) (id) VALUES ($1)", parameters: [.uuid(accountID)]))
+        let insert = SQLQuery(
+            unsafeSQL: "INSERT INTO \(projection) (account_id, currency, scale) VALUES ($1, $2, $3)",
+            parameters: [.uuid(accountID), .text("USD"), .integer(2)]
+        )
+        try await database.execute(insert)
+        await #expect(throws: Error.self) { try await database.execute(insert) }
+        #expect(try await database.queryStrings(SQLQuery(unsafeSQL: "SELECT account_id::TEXT FROM \(projection)"), column: "account_id") == [accountID.uuidString.lowercased()])
+        try await database.execute(SQLQuery(unsafeSQL: "DROP TABLE \(projection)"))
+        try await database.execute(SQLQuery(unsafeSQL: "DROP TABLE \(account)"))
+    } catch {
+        try? await database.execute(SQLQuery(unsafeSQL: "DROP TABLE IF EXISTS \(projection)"))
+        try? await database.execute(SQLQuery(unsafeSQL: "DROP TABLE IF EXISTS \(account)"))
+        try? await database.stop()
+        throw error
+    }
+    try await database.stop()
+}
+
+@Test func postgresSchemaCompilerCreatesManyToManyJunctionTableWithConstraints() async throws {
+    guard let host = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_HOST"] else { return }
+    let port = Int(ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_PORT"] ?? "5432") ?? 5432
+    let username = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_USER"] ?? "postgres"
+    let databaseName = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_DATABASE"] ?? username
+    let password = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_PASSWORD"]
+    let suffix = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+    let booksTable = "pearfy_m2m_books_\(suffix)"
+    let tagsTable = "pearfy_m2m_tags_\(suffix)"
+    let joinTable = "pearfy_m2m_links_\(suffix)"
+    let books = try SQLIdentifier(booksTable)
+    let tags = try SQLIdentifier(tagsTable)
+    let links = try SQLIdentifier(joinTable)
+    var configuration = PostgresClient.Configuration(
+        host: host, port: port, username: username, password: password,
+        database: databaseName, tls: .disable
+    )
+    configuration.options.maximumConnections = 1
+    configuration.options.minimumConnections = 0
+    let database = PearfyPostgresDatabase(configuration: configuration)
+    try await database.start()
+    do {
+        let schema = try SchemaIR(entities: [
+            SchemaEntity(table: booksTable, columns: [SchemaColumn(name: "id", type: .uuid, primaryKey: true)], relationships: [
+                SchemaRelationship(field: "tags", kind: .manyToMany, targetTable: tagsTable, onDelete: .cascade, joinTable: joinTable, joinColumn: "book_id", inverseJoinColumn: "tag_id")
+            ]),
+            SchemaEntity(table: tagsTable, columns: [SchemaColumn(name: "id", type: .uuid, primaryKey: true)])
+        ])
+        let plan = try PostgresSchemaCompiler().plan(from: nil, to: schema)
+        for statement in plan.upStatements { try await database.execute(SQLQuery(unsafeSQL: statement)) }
+        let bookID = UUID()
+        let tagID = UUID()
+        try await database.execute(SQLQuery(unsafeSQL: "INSERT INTO \(books) (id) VALUES ($1)", parameters: [.uuid(bookID)]))
+        try await database.execute(SQLQuery(unsafeSQL: "INSERT INTO \(tags) (id) VALUES ($1)", parameters: [.uuid(tagID)]))
+        try await database.execute(SQLQuery(unsafeSQL: "INSERT INTO \(links) (book_id, tag_id) VALUES ($1, $2)", parameters: [.uuid(bookID), .uuid(tagID)]))
+        try await database.execute(SQLQuery(unsafeSQL: "DELETE FROM \(books) WHERE id = $1", parameters: [.uuid(bookID)]))
+        #expect(try await database.queryStrings(SQLQuery(unsafeSQL: "SELECT book_id::TEXT FROM \(links)"), column: "book_id").isEmpty)
+        try await database.execute(SQLQuery(unsafeSQL: "DROP TABLE \(links)"))
+        try await database.execute(SQLQuery(unsafeSQL: "DROP TABLE \(tags)"))
+        try await database.execute(SQLQuery(unsafeSQL: "DROP TABLE \(books)"))
+    } catch {
+        try? await database.execute(SQLQuery(unsafeSQL: "DROP TABLE IF EXISTS \(links)"))
+        try? await database.execute(SQLQuery(unsafeSQL: "DROP TABLE IF EXISTS \(tags)"))
+        try? await database.execute(SQLQuery(unsafeSQL: "DROP TABLE IF EXISTS \(books)"))
+        try? await database.stop()
+        throw error
+    }
+    try await database.stop()
+}
+
 @Test func postgresMigrationRunnerSerializesConcurrentApplyAndRejectsDrift() async throws {
     guard let host = ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_HOST"] else { return }
     let port = Int(ProcessInfo.processInfo.environment["PEARFY_TEST_POSTGRES_PORT"] ?? "5432") ?? 5432

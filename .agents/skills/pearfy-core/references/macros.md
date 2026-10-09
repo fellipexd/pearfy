@@ -3,6 +3,8 @@
 This list was checked against `Sources/PearfyMacros/PearfyMacros.swift`,
 `Sources/PearfyMacrosImpl/PearfyMacroPlugin.swift`, and their expansion code in
 this checkout. It describes actual compiler support, not roadmap proposals.
+For a row-by-row application, registration, test, and starter-app matrix, see
+[`docs/MACROS.md`](../../../../docs/MACROS.md).
 
 ## HTTP controllers, routes, binding, and policy
 
@@ -50,8 +52,24 @@ or automatic container registration.
 `@Entity` generates `__pearfy_schema` for a struct with explicit stored
 properties whose types map to the current schema types, or forwards an explicit
 `SchemaEntity` expression. `@ID` and `@Column` are marker macros consumed by
-that expansion. This metadata macro is not an ORM and does not implement data
-access, relationships, or every database-specific constraint.
+that expansion. Persisted associations use `@ManyToOne`, `@OneToOne`,
+`@OneToMany`, and `@ManyToMany` when their semantics fit. `@ManyToOne` owns its
+FK; `@OneToOne` owns a unique FK unless it declares `mappedBy`; `@OneToMany` is
+inverse-only and requires `mappedBy` to a target `@ManyToOne`; `@ManyToMany`
+uses an owning-side junction table (optional explicit table/column names) and
+an inverse-side `mappedBy` when bidirectional. `SchemaIR` resolves these
+relationships, validates targets and unique reference columns, then
+materializes FK columns, constraints, or a composite-key junction table for
+PostgreSQL DDL planning. These macros describe schema only; they do not load,
+save, cascade, or query objects at runtime. Keep them in infrastructure schema
+models and leave access to repositories/adapters.
+
+An owning `@ManyToOne` or `@OneToOne` may use `primaryKey: true` to make its
+generated FK column a non-null entity key component without a duplicate scalar
+property. Relationship key columns precede scalar `@ID` columns, preserving
+declaration order within each group. Inverse and many-to-many associations
+cannot participate directly. Changing an existing table's primary key requires
+an explicit migration; the planner reports `PEARFY_SCHEMA_021`.
 
 ## API contract metadata
 
@@ -75,3 +93,7 @@ client SDKs.
 - Never infer availability from a roadmap entry. In particular this inventory
   contains no transaction, scheduler, listener, ORM, or authentication-provider
   macro.
+- Run `pearfy architecture check` after editing a Pearfy application. It scans
+  static direct `HTTPRouter` registrations under `Sources/` and emits an
+  advisory `REVIEW macro-policy` when a route macro may apply; it excludes
+  tests and cannot establish semantic equivalence on its own.

@@ -240,23 +240,36 @@ import FoundationNetworking
         target: "/api/users",
         body: Data("{\"name\":\"  \",\"age\":0}".utf8)
     ))
+    let invalidPatternResponse = await router.handle(try HTTPRequest(
+        method: .post,
+        target: "/api/users",
+        body: Data("{\"name\":\"Pear1\",\"age\":3}".utf8)
+    ))
     let validBodyResponse = await router.handle(try HTTPRequest(
         method: .post,
         target: "/api/users",
         body: Data("{\"name\":\"Pear\",\"age\":3}".utf8)
     ))
     let statusResponse = await router.handle(try HTTPRequest(method: .get, target: "/api/created"))
+    let putResponse = await router.handle(try HTTPRequest(method: .put, target: "/api/items/1"))
+    let patchResponse = await router.handle(try HTTPRequest(method: .patch, target: "/api/items/1"))
+    let deleteResponse = await router.handle(try HTTPRequest(method: .delete, target: "/api/items/1"))
 
     #expect(String(decoding: pathResponse.body, as: UTF8.self) == "hello pear")
     #expect(String(decoding: queryResponse.body, as: UTF8.self) == "query swift")
     #expect(String(decoding: bodyResponse.body, as: UTF8.self) == "body json")
     #expect(invalidBodyResponse.status == 400)
     let violations = try JSONDecoder().decode([ValidationViolation].self, from: invalidBodyResponse.body)
+    let patternViolations = try JSONDecoder().decode([ValidationViolation].self, from: invalidPatternResponse.body)
     #expect(violations.first?.field == "name")
     #expect(violations.contains { $0.field == "age" })
+    #expect(patternViolations.contains { $0.field == "name" })
     #expect(validBodyResponse.status == HTTPStatus.created.rawValue)
     #expect(String(decoding: validBodyResponse.body, as: UTF8.self) == "created Pear")
     #expect(statusResponse.status == HTTPStatus.created.rawValue)
+    #expect(String(decoding: putResponse.body, as: UTF8.self) == "put 1")
+    #expect(String(decoding: patchResponse.body, as: UTF8.self) == "patch 1")
+    #expect(String(decoding: deleteResponse.body, as: UTF8.self) == "delete 1")
 }
 
 @Test func controllerSecurityMacrosApplyAuthenticatedRolesAndPermitAll() async throws {
@@ -487,6 +500,15 @@ private struct MacroGreetingController: Sendable {
     func created() -> String {
         "created"
     }
+
+    @Put("/items/{id}")
+    func replace(@PathVariable id: String) -> String { "put \(id)" }
+
+    @Patch("/items/{id}")
+    func update(@PathVariable id: String) -> String { "patch \(id)" }
+
+    @Delete("/items/{id}")
+    func remove(@PathVariable id: String) -> String { "delete \(id)" }
 }
 
 @RouteGroup(name: "mobile", prefix: "/app", sdk: [.ios, .android], contractVersion: "1.0")
@@ -506,6 +528,7 @@ private struct MacroGreetingPayload: Codable, Sendable {
 private struct MacroUserInput: Codable, Validatable {
     @NotBlank
     @Size(min: 2, max: 20)
+    @Pattern("^[A-Za-z]+$")
     let name: String
     @Min(1)
     @Max(10)

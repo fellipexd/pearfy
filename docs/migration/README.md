@@ -79,6 +79,10 @@ semantics require source review; unsupported cases stay open and include a
 reason. Update a route through
 `discovered → contracted → mapped → implemented`; `verified` is reserved for a
 passing E2E comparison. `finalize` refuses open/conflicting route contracts.
+For an adopted Pearfy Swift application, `pearfy architecture check` also
+reports direct static HTTPRouter registrations under `Sources/` that may map to
+route macros; classify each as converted or a documented dynamic/infrastructure
+exception. This diagnostic is advisory and does not modify source.
 
 ## E2E comparison safety
 

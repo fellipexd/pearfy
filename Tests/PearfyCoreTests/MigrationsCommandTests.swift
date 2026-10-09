@@ -30,6 +30,93 @@ import Testing
     #expect(catalog.migrations[0].up.statement.contains("CREATE INDEX \"accounts_email_idx\""))
 }
 
+@Test func cliMigrationGenerationUsesRelationshipMetadataFromSchemaEntities() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("pearfy-relationship-migration-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let modelDirectory = root.appendingPathComponent(".pearfy", isDirectory: true)
+    try FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)
+    let model = try SchemaIR(entities: [
+        SchemaEntity(table: "customers", columns: [SchemaColumn(name: "id", type: .uuid, primaryKey: true)]),
+        SchemaEntity(table: "invoices", columns: [SchemaColumn(name: "id", type: .uuid, primaryKey: true)], relationships: [
+            SchemaRelationship(field: "customer", kind: .manyToOne, targetTable: "customers", nullable: true)
+        ])
+    ])
+    try model.canonicalJSON().write(to: modelDirectory.appendingPathComponent("schema.json"))
+
+    #expect(try await PearfyMigrationsCommand.run(
+        arguments: ["generate", "--model", ".pearfy/schema.json", "--id", "000001_relationships"],
+        projectRoot: root
+    ) == 0)
+
+    let artifact = try #require(try SQLMigrationCatalog(directory: root.appendingPathComponent("Migrations")).migrations.first)
+    #expect(artifact.up.statement.contains("CREATE TABLE \"invoices\" (\"customer_id\" UUID NULL, \"id\" UUID NOT NULL"))
+    #expect(artifact.up.statement.contains("ADD CONSTRAINT \"fk_invoices_customer_id\" FOREIGN KEY (\"customer_id\") REFERENCES \"customers\" (\"id\")"))
+}
+
+@Test func cliMigrationGenerationPreservesRelationshipColumnInCompositePrimaryKey() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("pearfy-composite-relationship-migration-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let modelDirectory = root.appendingPathComponent(".pearfy", isDirectory: true)
+    try FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)
+    let model = try SchemaIR(entities: [
+        SchemaEntity(table: "bank_accounts", columns: [SchemaColumn(name: "id", type: .uuid, primaryKey: true)]),
+        SchemaEntity(table: "bank_account_balance_projections", columns: [
+            SchemaColumn(name: "currency", type: .text, primaryKey: true),
+            SchemaColumn(name: "scale", type: .integer, primaryKey: true)
+        ], relationships: [
+            SchemaRelationship(field: "account", kind: .manyToOne, targetTable: "bank_accounts", column: "account_id", primaryKey: true)
+        ])
+    ])
+    try model.canonicalJSON().write(to: modelDirectory.appendingPathComponent("schema.json"))
+
+    #expect(try await PearfyMigrationsCommand.run(
+        arguments: ["generate", "--model", ".pearfy/schema.json", "--id", "000002_balance_projection"],
+        projectRoot: root
+    ) == 0)
+
+    let artifact = try #require(try SQLMigrationCatalog(directory: root.appendingPathComponent("Migrations")).migrations.first)
+    #expect(artifact.up.statement.contains("CREATE TABLE \"bank_account_balance_projections\""))
+    #expect(artifact.up.statement.contains("PRIMARY KEY (\"account_id\", \"currency\", \"scale\")"))
+    #expect(artifact.up.statement.contains("FOREIGN KEY (\"account_id\") REFERENCES \"bank_accounts\" (\"id\")"))
+}
+
+@Test func cliMigrationGenerationRejectsUnsafePrimaryKeyChangeWithExplicitDiagnostic() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("pearfy-primary-key-change-migration-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let modelDirectory = root.appendingPathComponent(".pearfy", isDirectory: true)
+    try FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)
+    let previous = try SchemaIR(entities: [
+        SchemaEntity(table: "bank_accounts", columns: [SchemaColumn(name: "id", type: .uuid, primaryKey: true)]),
+        SchemaEntity(table: "bank_account_balance_projections", columns: [SchemaColumn(name: "id", type: .uuid, primaryKey: true)])
+    ])
+    let desired = try SchemaIR(entities: [
+        SchemaEntity(table: "bank_accounts", columns: [SchemaColumn(name: "id", type: .uuid, primaryKey: true)]),
+        SchemaEntity(table: "bank_account_balance_projections", columns: [
+            SchemaColumn(name: "currency", type: .text, primaryKey: true),
+            SchemaColumn(name: "scale", type: .integer, primaryKey: true)
+        ], relationships: [
+            SchemaRelationship(field: "account", kind: .manyToOne, targetTable: "bank_accounts", column: "account_id", primaryKey: true)
+        ])
+    ])
+    try previous.canonicalJSON().write(to: modelDirectory.appendingPathComponent("previous.json"))
+    try desired.canonicalJSON().write(to: modelDirectory.appendingPathComponent("desired.json"))
+
+    await #expect(throws: SchemaCompilerError.unsupportedPrimaryKeyChange(table: "bank_account_balance_projections")) {
+        try await PearfyMigrationsCommand.run(
+            arguments: [
+                "generate", "--model", ".pearfy/desired.json",
+                "--previous-model", ".pearfy/previous.json",
+                "--id", "000003_balance_projection_key"
+            ],
+            projectRoot: root
+        )
+    }
+    #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("Migrations").path))
+}
+
 @Test func modelBasedMigrationGenerationReplacesAnExistingCatalogOnlyWhenRequested() async throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("pearfy-model-migration-replace-\(UUID().uuidString)", isDirectory: true)

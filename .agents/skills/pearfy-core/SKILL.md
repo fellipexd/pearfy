@@ -22,6 +22,8 @@ Use `pearfy add <module>` only for an available registry entry. Prefer the appli
 
 Use direct `HTTPRouter` route registration only when a dynamic or infrastructure requirement has no suitable macro; record a concrete reason in the change/migration output. Security middleware owns authentication and authorization enforcement; controller policy macros only declare route access metadata. Route groups only describe contracts. Register routes and middleware before router freeze. Avoid global service locators and request-path cardinality in metrics. The current HTTP server does not supply TLS or WebSockets.
 
+Run `pearfy architecture check` on a tracked project to inspect direct HTTP route registrations under `Sources/`. Treat `REVIEW macro-policy` as a prompt to convert a static endpoint to `@RestController` and its matching verb macro when semantics fit, or document why the low-level registration is needed. This bounded source scan is advisory and excludes tests; it cannot prove semantic equivalence.
+
 ## Validate
 
 Run `swift build` and `bash scripts/test-unit.sh`; use the matching focused router, macro, DI, or lifecycle tests when changing those contracts. `pearfy guardian verify` is an independent build/test/environment gate, not a complete security certification.

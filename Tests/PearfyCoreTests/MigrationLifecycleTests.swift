@@ -4,6 +4,20 @@ import FoundationNetworking
 #endif
 import Testing
 
+@Test func missingArchitectureStyleDefaultsToCleanAndExplicitStyleIsPreserved() throws {
+    let decoder = JSONDecoder()
+    let unspecified = try decoder.decode(
+        PearfyProjectManifest.Architecture.self,
+        from: Data(#"{"profile":"standard-api"}"#.utf8)
+    )
+    let configured = try decoder.decode(
+        PearfyProjectManifest.Architecture.self,
+        from: Data(#"{"style":"hexagonal","profile":"standard-api"}"#.utf8)
+    )
+    #expect(unspecified.style == "clean")
+    #expect(configured.style == "hexagonal")
+}
+
 @testable import PearfyCLIKit
 
 @Test func springAnalyzerReconstructsRoutesWithControllerPrefixesAndEvidence() throws {
@@ -56,6 +70,55 @@ import Testing
     #expect(contract.elements.contains { $0.kind == .job && $0.name == "refresh" })
     #expect(contract.elements.contains { $0.kind == .event && $0.name == "consume" })
     #expect(PearfyMigrationProgress(routes: contract.routes, elements: contract.elements).elements["service"]?.total == 1)
+}
+
+@Test func migrationMacroGuidancePrefersSupportedRouteMacrosWithoutChangingContract() throws {
+    let route = PearfyLegacyRouteContract(
+        id: "users.getByID",
+        method: "GET",
+        path: "/users/{id}"
+    )
+    let original = route
+    let guidance = PearfyMacroMigrationGuidance.route(method: route.method, path: route.path)
+
+    #expect(guidance.status == .applicable)
+    #expect(guidance.guidance.contains("@RestController + @Get"))
+    #expect(guidance.guidance.contains("does not generate or rewrite handlers"))
+    #expect(route == original)
+}
+
+@Test func migrationMacroGuidanceReportsUnsupportedRouteAndElementSemantics() throws {
+    let headRoute = PearfyMacroMigrationGuidance.route(method: "HEAD", path: "/health")
+    #expect(headRoute.status == .notSupported)
+    #expect(headRoute.statusLine.contains("no public Pearfy controller macro maps HTTP HEAD"))
+
+    let securityElement = PearfyLegacyElementContract(
+        id: "security-rule:Users.java:admin:PreAuthorize",
+        kind: .securityRule,
+        name: "admin",
+        attributes: ["annotation": .string("PreAuthorize")]
+    )
+    let securityGuidance = PearfyMacroMigrationGuidance.element(securityElement)
+    #expect(securityGuidance.status == .notSupported)
+    #expect(securityGuidance.guidance.contains("cannot prove equivalent principal, expression, and middleware semantics"))
+
+    let transactionElement = PearfyLegacyElementContract(
+        id: "transaction:UserService.java:transfer",
+        kind: .transaction,
+        name: "transfer",
+        attributes: ["annotation": .string("Transactional")]
+    )
+    let transactionGuidance = PearfyMacroMigrationGuidance.element(transactionElement)
+    #expect(transactionGuidance.status == .notSupported)
+    #expect(transactionGuidance.guidance.contains("no public Pearfy transaction macro exists"))
+    #expect(!transactionGuidance.guidance.contains("@Transactional"))
+
+    let externalDependency = PearfyLegacyElementContract(
+        id: "external-dependency:vendor",
+        kind: .externalDependency,
+        name: "vendor"
+    )
+    #expect(PearfyMacroMigrationGuidance.element(externalDependency).status == .notApplicable)
 }
 
 @Test func analyzerIngestsYAMLOpenAPIAndRetainsParameterExamples() throws {
@@ -264,6 +327,7 @@ import Testing
         from: root.appendingPathComponent(".pearfy/migration/legacy-contract.yml")
     )
     #expect(manifest.project.mode == .baseline)
+    #expect(manifest.architecture.style == "clean")
     #expect(manifest.pearfy.frameworkVersion == "0.1.0")
     #expect(manifest.origin.type == "pearfy")
     #expect(contract.routes.map(\.key) == ["GET /health"])

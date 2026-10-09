@@ -212,6 +212,7 @@ struct PearfyCLI {
 
     `new` creates an executable package linked to a local Pearfy checkout.
     `init` creates a versioned traceability manifest and architecture profile.
+    `architecture check` verifies profile modules and reviews static HTTPRouter calls that have route-macro equivalents.
     `inspect` is read-only; `baseline`, `adopt`, and `migrate` record evidence and the canonical Legacy Contract.
     `migrate verify` compares selected legacy/Pearfy HTTP contracts; writes require sandbox opt-in.
     `modules` lists available products and checks a generated project's selection.
@@ -220,7 +221,7 @@ struct PearfyCLI {
     `gameserver template` prints a starter profile as JSON; `--output` writes without replacing a file.
     `gameserver recipe` prints a genre/server composition plan and application-owned validation gates.
     `gameserver recovery` prints a secret-free Redis recovery plan; `--apply` selects the optional module and writes its config.
-    `migrations generate` compiles a Pearfy SchemaIR model into an immutable SQL artifact; `apply` runs the catalog locally.
+    `migrations generate --product <SwiftPM-product>` asks that app product to export its `PearfyGeneratedSchemaRegistry.entities`, then compiles the resulting SchemaIR JSON into an immutable SQL artifact; `--model` is the export destination with `--product` and the input schema JSON otherwise. Pass `--previous-model <SchemaIR.json>` to plan a safe delta and diagnose primary-key changes that require an explicit migration. The app must implement `--pearfy-export-schema <path>`; `apply` runs the catalog locally.
     `ai` initializes a Skills-first harness and synchronizes only installed module Skills.
     `ai mcp` enables dynamic tools only for an installed module that implements them.
     `sdk versions` lists the v1.6 through v1.8 capability milestones in this checkout.

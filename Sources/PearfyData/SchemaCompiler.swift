@@ -107,6 +107,119 @@ public enum SchemaReferentialAction: String, Codable, Sendable {
     case setDefault = "SET DEFAULT"
 }
 
+public enum SchemaRelationshipKind: String, Codable, Sendable {
+    case manyToOne
+    case oneToOne
+    case oneToMany
+    case manyToMany
+}
+
+/// Declarative association metadata. It describes relational schema only; it
+/// does not load related values or provide persistence behavior.
+public struct SchemaRelationship: Codable, Equatable, Sendable {
+    public let field: String
+    public let kind: SchemaRelationshipKind
+    public let targetTable: String
+    public let mappedBy: String?
+    public let column: String?
+    public let referencedColumn: String
+    public let foreignKeyName: String?
+    public let nullable: Bool
+    /// Adds this owning foreign-key column to the entity primary key.
+    public let primaryKey: Bool
+    public let onUpdate: SchemaReferentialAction
+    public let onDelete: SchemaReferentialAction
+    public let joinTable: String?
+    public let joinColumn: String?
+    public let inverseJoinColumn: String?
+    public let inverseReferencedColumn: String?
+    public let inverseForeignKeyName: String?
+
+    public init(
+        field: String,
+        kind: SchemaRelationshipKind,
+        targetTable: String,
+        mappedBy: String? = nil,
+        column: String? = nil,
+        referencedColumn: String = "id",
+        foreignKeyName: String? = nil,
+        nullable: Bool = false,
+        primaryKey: Bool = false,
+        onUpdate: SchemaReferentialAction = .noAction,
+        onDelete: SchemaReferentialAction = .noAction,
+        joinTable: String? = nil,
+        joinColumn: String? = nil,
+        inverseJoinColumn: String? = nil,
+        inverseReferencedColumn: String? = nil,
+        inverseForeignKeyName: String? = nil
+    ) {
+        self.field = field
+        self.kind = kind
+        self.targetTable = targetTable
+        self.mappedBy = mappedBy
+        self.column = column
+        self.referencedColumn = referencedColumn
+        self.foreignKeyName = foreignKeyName
+        self.nullable = nullable
+        self.primaryKey = primaryKey
+        self.onUpdate = onUpdate
+        self.onDelete = onDelete
+        self.joinTable = joinTable
+        self.joinColumn = joinColumn
+        self.inverseJoinColumn = inverseJoinColumn
+        self.inverseReferencedColumn = inverseReferencedColumn
+        self.inverseForeignKeyName = inverseForeignKeyName
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case field, kind, targetTable, mappedBy, column, referencedColumn, foreignKeyName
+        case nullable, primaryKey, onUpdate, onDelete, joinTable, joinColumn, inverseJoinColumn
+        case inverseReferencedColumn, inverseForeignKeyName
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            field: try container.decode(String.self, forKey: .field),
+            kind: try container.decode(SchemaRelationshipKind.self, forKey: .kind),
+            targetTable: try container.decode(String.self, forKey: .targetTable),
+            mappedBy: try container.decodeIfPresent(String.self, forKey: .mappedBy),
+            column: try container.decodeIfPresent(String.self, forKey: .column),
+            referencedColumn: try container.decode(String.self, forKey: .referencedColumn),
+            foreignKeyName: try container.decodeIfPresent(String.self, forKey: .foreignKeyName),
+            nullable: try container.decode(Bool.self, forKey: .nullable),
+            primaryKey: try container.decodeIfPresent(Bool.self, forKey: .primaryKey) ?? false,
+            onUpdate: try container.decode(SchemaReferentialAction.self, forKey: .onUpdate),
+            onDelete: try container.decode(SchemaReferentialAction.self, forKey: .onDelete),
+            joinTable: try container.decodeIfPresent(String.self, forKey: .joinTable),
+            joinColumn: try container.decodeIfPresent(String.self, forKey: .joinColumn),
+            inverseJoinColumn: try container.decodeIfPresent(String.self, forKey: .inverseJoinColumn),
+            inverseReferencedColumn: try container.decodeIfPresent(String.self, forKey: .inverseReferencedColumn),
+            inverseForeignKeyName: try container.decodeIfPresent(String.self, forKey: .inverseForeignKeyName)
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(field, forKey: .field)
+        try container.encode(kind, forKey: .kind)
+        try container.encode(targetTable, forKey: .targetTable)
+        try container.encodeIfPresent(mappedBy, forKey: .mappedBy)
+        try container.encodeIfPresent(column, forKey: .column)
+        try container.encode(referencedColumn, forKey: .referencedColumn)
+        try container.encodeIfPresent(foreignKeyName, forKey: .foreignKeyName)
+        try container.encode(nullable, forKey: .nullable)
+        if primaryKey { try container.encode(true, forKey: .primaryKey) }
+        try container.encode(onUpdate, forKey: .onUpdate)
+        try container.encode(onDelete, forKey: .onDelete)
+        try container.encodeIfPresent(joinTable, forKey: .joinTable)
+        try container.encodeIfPresent(joinColumn, forKey: .joinColumn)
+        try container.encodeIfPresent(inverseJoinColumn, forKey: .inverseJoinColumn)
+        try container.encodeIfPresent(inverseReferencedColumn, forKey: .inverseReferencedColumn)
+        try container.encodeIfPresent(inverseForeignKeyName, forKey: .inverseForeignKeyName)
+    }
+}
+
 public struct SchemaForeignKey: Codable, Equatable, Sendable {
     public let name: String
     public let columns: [String]
@@ -144,6 +257,9 @@ public struct SchemaEntity: Codable, Equatable, Sendable {
     public let checks: [SchemaCheckConstraint]
     public let uniqueConstraints: [SchemaUniqueConstraint]
     public let foreignKeys: [SchemaForeignKey]
+    public let relationships: [SchemaRelationship]
+    /// True only for deterministic junction tables synthesized from @ManyToMany.
+    public let relationshipJoinTable: Bool
     /// Reviewed table constraints that are not column-level metadata.
     public let supplementalSQL: [String]
 
@@ -155,7 +271,9 @@ public struct SchemaEntity: Codable, Equatable, Sendable {
         checks: [SchemaCheckConstraint] = [],
         uniqueConstraints: [SchemaUniqueConstraint] = [],
         foreignKeys: [SchemaForeignKey] = [],
-        supplementalSQL: [String] = []
+        supplementalSQL: [String] = [],
+        relationships: [SchemaRelationship] = [],
+        relationshipJoinTable: Bool = false
     ) {
         self.table = table
         self.columns = columns
@@ -165,6 +283,8 @@ public struct SchemaEntity: Codable, Equatable, Sendable {
         self.uniqueConstraints = uniqueConstraints
         self.foreignKeys = foreignKeys
         self.supplementalSQL = supplementalSQL
+        self.relationships = relationships
+        self.relationshipJoinTable = relationshipJoinTable
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -176,6 +296,8 @@ public struct SchemaEntity: Codable, Equatable, Sendable {
         case uniqueConstraints
         case foreignKeys
         case supplementalSQL
+        case relationships
+        case relationshipJoinTable
     }
 
     public init(from decoder: any Decoder) throws {
@@ -188,7 +310,9 @@ public struct SchemaEntity: Codable, Equatable, Sendable {
             checks: try container.decodeIfPresent([SchemaCheckConstraint].self, forKey: .checks) ?? [],
             uniqueConstraints: try container.decodeIfPresent([SchemaUniqueConstraint].self, forKey: .uniqueConstraints) ?? [],
             foreignKeys: try container.decodeIfPresent([SchemaForeignKey].self, forKey: .foreignKeys) ?? [],
-            supplementalSQL: try container.decodeIfPresent([String].self, forKey: .supplementalSQL) ?? []
+            supplementalSQL: try container.decodeIfPresent([String].self, forKey: .supplementalSQL) ?? [],
+            relationships: try container.decodeIfPresent([SchemaRelationship].self, forKey: .relationships) ?? [],
+            relationshipJoinTable: try container.decodeIfPresent(Bool.self, forKey: .relationshipJoinTable) ?? false
         )
     }
 
@@ -202,6 +326,10 @@ public struct SchemaEntity: Codable, Equatable, Sendable {
         try container.encode(uniqueConstraints, forKey: .uniqueConstraints)
         try container.encode(foreignKeys, forKey: .foreignKeys)
         try container.encode(supplementalSQL, forKey: .supplementalSQL)
+        if !relationships.isEmpty {
+            try container.encode(relationships, forKey: .relationships)
+        }
+        if relationshipJoinTable { try container.encode(true, forKey: .relationshipJoinTable) }
     }
 }
 
@@ -228,15 +356,251 @@ public struct SchemaIR: Codable, Equatable, Sendable {
         }
         var tableNames: Set<String> = []
         var canonicalEntities: [SchemaEntity] = []
-
+        var entitiesByTable: [String: SchemaEntity] = [:]
         for entity in entities {
-            _ = try SQLIdentifier(entity.table)
             guard tableNames.insert(entity.table).inserted else {
                 throw SchemaCompilerError.duplicateTable(entity.table)
             }
+            entitiesByTable[entity.table] = entity
+        }
+        var inverseMappings: Set<String> = []
+        var generatedJoinTables: [String: SchemaEntity] = [:]
+
+        for entity in entities {
+            _ = try SQLIdentifier(entity.table)
+            if entity.relationshipJoinTable && !entity.relationships.isEmpty {
+                throw SchemaCompilerError.invalidRelationship(table: entity.table, field: "*", reason: "generated relationship join tables cannot declare relationships")
+            }
+
+            var materializedColumns = entity.columns
+            var materializedForeignKeys = entity.foreignKeys
+            var relationshipFields: Set<String> = []
+            for relationship in entity.relationships {
+                do { _ = try SQLIdentifier(relationship.field) }
+                catch { throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "invalid relationship property name") }
+                guard relationshipFields.insert(relationship.field).inserted else {
+                    throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "duplicate relationship property")
+                }
+                guard let target = entitiesByTable[relationship.targetTable] else {
+                    throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "target table '\(relationship.targetTable)' does not exist in this schema")
+                }
+                guard !target.relationshipJoinTable else {
+                    throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "relationship target cannot be a generated junction table")
+                }
+                _ = try SQLIdentifier(relationship.targetTable)
+
+                let owning: Bool
+                switch relationship.kind {
+                case .manyToOne:
+                    guard !relationship.primaryKey || relationship.mappedBy == nil else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "inverse relationships cannot participate in a primary key")
+                    }
+                    guard relationship.mappedBy == nil else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "@ManyToOne must own its foreign key and cannot use mappedBy")
+                    }
+                    owning = true
+                case .oneToOne:
+                    owning = relationship.mappedBy == nil
+                    if relationship.primaryKey && !owning {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "inverse relationships cannot participate in a primary key")
+                    }
+                    if !owning {
+                        guard relationship.column == nil, relationship.foreignKeyName == nil,
+                              relationship.onUpdate == .noAction, relationship.onDelete == .noAction,
+                              relationship.referencedColumn == "id" else {
+                            throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "inverse @OneToOne cannot configure foreign-key options")
+                        }
+                    }
+                case .oneToMany:
+                    guard !relationship.primaryKey else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "inverse relationships cannot participate in a primary key")
+                    }
+                    guard let mappedBy = relationship.mappedBy, !mappedBy.isEmpty else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "inverse @OneToMany requires mappedBy")
+                    }
+                    guard relationship.column == nil, relationship.foreignKeyName == nil,
+                          relationship.onUpdate == .noAction, relationship.onDelete == .noAction,
+                          relationship.referencedColumn == "id" else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "@OneToMany is inverse-only; configure the foreign key on the owning @ManyToOne")
+                    }
+                    owning = false
+                case .manyToMany:
+                    guard !relationship.primaryKey else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "many-to-many relationships cannot directly participate in an entity primary key")
+                    }
+                    owning = relationship.mappedBy == nil
+                    if !owning {
+                        guard relationship.column == nil, relationship.foreignKeyName == nil,
+                              relationship.joinTable == nil, relationship.joinColumn == nil,
+                              relationship.inverseJoinColumn == nil, relationship.inverseForeignKeyName == nil,
+                              relationship.onUpdate == .noAction, relationship.onDelete == .noAction,
+                              relationship.referencedColumn == "id", relationship.inverseReferencedColumn == nil else {
+                            throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "inverse @ManyToMany cannot configure join-table or foreign-key options")
+                        }
+                    } else {
+                        guard relationship.column == nil,
+                              !relationship.nullable, relationship.referencedColumn == "id" else {
+                            throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "@ManyToMany uses non-null join-table keys; configure join columns with joinColumn and inverseJoinColumn")
+                        }
+                    }
+                }
+
+                if !owning {
+                    guard let mappedBy = relationship.mappedBy,
+                          let owner = target.relationships.first(where: { $0.field == mappedBy }) else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "mappedBy does not name a relationship on '\(relationship.targetTable)'")
+                    }
+                    let expectedOwnerKind: SchemaRelationshipKind = switch relationship.kind {
+                    case .oneToMany: .manyToOne
+                    case .oneToOne: .oneToOne
+                    case .manyToMany: .manyToMany
+                    case .manyToOne: .manyToOne
+                    }
+                    guard owner.kind == expectedOwnerKind, owner.mappedBy == nil, owner.targetTable == entity.table else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "mappedBy must reference the owning \(expectedOwnerKind.rawValue) relationship back to '\(entity.table)'")
+                    }
+                    let mappingKey = "\(relationship.targetTable).\(mappedBy)"
+                    guard inverseMappings.insert(mappingKey).inserted else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "the owning relationship is already mapped by another inverse property")
+                    }
+                    continue
+                }
+
+                if relationship.kind == .manyToMany {
+                    let inverseReferencedColumn = relationship.inverseReferencedColumn ?? "id"
+                    let sourceReferencedColumn = relationship.referencedColumn
+                    let sourceID = try Self.relationshipReferenceColumn(sourceReferencedColumn, entity: entity, targetName: entity.table, field: relationship.field)
+                    let targetID = try Self.relationshipReferenceColumn(inverseReferencedColumn, entity: target, targetName: target.table, field: relationship.field)
+                    let joinTable = relationship.joinTable ?? "\(entity.table)_\(target.table)"
+                    let joinColumn = relationship.joinColumn ?? "\(Self.snakeCase(entity.table))_id"
+                    let inverseJoinColumn = relationship.inverseJoinColumn ?? "\(Self.snakeCase(target.table))_id"
+                    do { _ = try SQLIdentifier(joinTable); _ = try SQLIdentifier(joinColumn); _ = try SQLIdentifier(inverseJoinColumn) }
+                    catch { throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "invalid join-table identifier") }
+                    guard joinColumn != inverseJoinColumn else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "joinColumn and inverseJoinColumn must be distinct")
+                    }
+                    if relationship.onDelete == .setNull || relationship.onUpdate == .setNull || relationship.onDelete == .setDefault || relationship.onUpdate == .setDefault {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "join-table foreign keys are non-null and do not support SET NULL or SET DEFAULT")
+                    }
+                    let joinFKName = relationship.foreignKeyName ?? "fk_\(joinTable)_\(joinColumn)"
+                    let inverseFKName = relationship.inverseForeignKeyName ?? "fk_\(joinTable)_\(inverseJoinColumn)"
+                    do { _ = try SQLIdentifier(joinFKName); _ = try SQLIdentifier(inverseFKName) }
+                    catch { throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "invalid join-table foreign-key identifier") }
+                    guard joinFKName != inverseFKName else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "join-table foreign-key names must be distinct")
+                    }
+                    let synthesized = SchemaEntity(
+                        table: joinTable,
+                        columns: [
+                            SchemaColumn(name: joinColumn, type: sourceID.type),
+                            SchemaColumn(name: inverseJoinColumn, type: targetID.type)
+                        ].sorted { $0.name < $1.name },
+                        primaryKey: [joinColumn, inverseJoinColumn],
+                        foreignKeys: [
+                            SchemaForeignKey(name: joinFKName, columns: [joinColumn], referencedTable: entity.table, referencedColumns: [sourceReferencedColumn], onUpdate: relationship.onUpdate, onDelete: relationship.onDelete),
+                            SchemaForeignKey(name: inverseFKName, columns: [inverseJoinColumn], referencedTable: target.table, referencedColumns: [inverseReferencedColumn], onUpdate: relationship.onUpdate, onDelete: relationship.onDelete)
+                        ].sorted { $0.name < $1.name },
+                        relationshipJoinTable: true
+                    )
+                    if let existing = entitiesByTable[joinTable] {
+                        guard existing.relationshipJoinTable,
+                              existing.columns.sorted(by: { $0.name < $1.name }) == synthesized.columns.sorted(by: { $0.name < $1.name }),
+                              existing.primaryKey == synthesized.primaryKey,
+                              existing.foreignKeys.sorted(by: { $0.name < $1.name }) == synthesized.foreignKeys.sorted(by: { $0.name < $1.name }) else {
+                            throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "join table '\(joinTable)' conflicts with an existing schema entity")
+                        }
+                    }
+                    if let existing = generatedJoinTables[joinTable] {
+                        guard existing == synthesized else {
+                            throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "multiple relationships generate conflicting join table '\(joinTable)'; configure distinct joinTable names")
+                        }
+                    } else {
+                        generatedJoinTables[joinTable] = synthesized
+                    }
+                    continue
+                }
+
+                if relationship.primaryKey && relationship.nullable {
+                    throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "a relationship primary-key column must be non-null")
+                }
+
+                _ = try SQLIdentifier(relationship.referencedColumn)
+                guard let referenced = target.columns.first(where: { $0.name == relationship.referencedColumn }) else {
+                    throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "referenced column '\(relationship.targetTable).\(relationship.referencedColumn)' does not exist")
+                }
+                let referenceIsUnique = referenced.primaryKey || target.primaryKey.contains(relationship.referencedColumn) || referenced.unique
+                    || target.uniqueConstraints.contains { $0.columns == [relationship.referencedColumn] }
+                    || target.indexes.contains { $0.unique && $0.columns == [relationship.referencedColumn] }
+                guard referenceIsUnique else {
+                    throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "referenced column must be a primary key or uniquely constrained")
+                }
+                if (relationship.onDelete == .setNull || relationship.onUpdate == .setNull) && !relationship.nullable {
+                    throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "SET NULL requires nullable: true")
+                }
+
+                let columnName = relationship.column ?? Self.defaultRelationshipColumn(for: relationship.field)
+                _ = try SQLIdentifier(columnName)
+                let oneToOne = relationship.kind == .oneToOne
+                let existingColumn = materializedColumns.first(where: { $0.name == columnName })
+                if relationship.onDelete == .setDefault || relationship.onUpdate == .setDefault {
+                    guard existingColumn?.defaultValue != nil else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "SET DEFAULT requires an explicitly modeled foreign-key column with a default value")
+                    }
+                }
+                let desiredColumn = SchemaColumn(
+                    name: columnName,
+                    type: referenced.type,
+                    nullable: relationship.nullable,
+                    primaryKey: relationship.primaryKey,
+                    unique: oneToOne && !relationship.primaryKey
+                )
+                if let existing = existingColumn {
+                    guard existing.type == desiredColumn.type, existing.nullable == desiredColumn.nullable,
+                          existing.unique == desiredColumn.unique,
+                          existing.primaryKey == desiredColumn.primaryKey || relationship.primaryKey else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "configured foreign-key column conflicts with existing column metadata")
+                    }
+                    if relationship.primaryKey, !existing.primaryKey,
+                       let index = materializedColumns.firstIndex(where: { $0.name == columnName }) {
+                        materializedColumns[index] = SchemaColumn(
+                            name: existing.name,
+                            type: existing.type,
+                            nullable: existing.nullable,
+                            primaryKey: true,
+                            unique: existing.unique,
+                            defaultValue: existing.defaultValue,
+                            renamedFrom: existing.renamedFrom,
+                            identifierStrategy: existing.identifierStrategy
+                        )
+                    }
+                } else {
+                    materializedColumns.append(desiredColumn)
+                }
+
+                let foreignKeyName = relationship.foreignKeyName ?? "fk_\(entity.table)_\(columnName)"
+                _ = try SQLIdentifier(foreignKeyName)
+                let generatedForeignKey = SchemaForeignKey(
+                    name: foreignKeyName,
+                    columns: [columnName],
+                    referencedTable: relationship.targetTable,
+                    referencedColumns: [relationship.referencedColumn],
+                    onUpdate: relationship.onUpdate,
+                    onDelete: relationship.onDelete,
+                    setNullColumns: relationship.onDelete == .setNull ? [columnName] : []
+                )
+                if let existing = materializedForeignKeys.first(where: { $0.name == foreignKeyName }) {
+                    guard existing == generatedForeignKey else {
+                        throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "foreign-key name conflicts with existing constraint metadata")
+                    }
+                } else if materializedForeignKeys.contains(where: { $0.columns == [columnName] }) {
+                    throw SchemaCompilerError.invalidRelationship(table: entity.table, field: relationship.field, reason: "foreign-key column is already owned by another constraint")
+                } else {
+                    materializedForeignKeys.append(generatedForeignKey)
+                }
+            }
 
             var columnNames: Set<String> = []
-            for column in entity.columns {
+            for column in materializedColumns {
                 _ = try SQLIdentifier(column.name)
                 guard columnNames.insert(column.name).inserted else {
                     throw SchemaCompilerError.duplicateColumn(table: entity.table, column: column.name)
@@ -273,17 +637,27 @@ public struct SchemaIR: Codable, Equatable, Sendable {
                     }
                 }
             }
-            guard !entity.columns.isEmpty else { throw SchemaCompilerError.emptyEntity(entity.table) }
-            let primaryKey = entity.primaryKey.isEmpty
-                ? entity.columns.filter(\.primaryKey).map(\.name)
+            guard !materializedColumns.isEmpty else { throw SchemaCompilerError.emptyEntity(entity.table) }
+            let relationshipPrimaryKeyColumns = entity.relationships
+                .filter(\.primaryKey)
+                .compactMap { relationship in
+                    relationship.column ?? Self.defaultRelationshipColumn(for: relationship.field)
+                }
+            let scalarPrimaryKeyColumns = entity.primaryKey.isEmpty
+                ? materializedColumns.filter(\.primaryKey).map(\.name)
                 : entity.primaryKey
+            let primaryKey = relationshipPrimaryKeyColumns
+                + scalarPrimaryKeyColumns.filter { !relationshipPrimaryKeyColumns.contains($0) }
             guard Set(primaryKey).count == primaryKey.count,
-                  primaryKey.allSatisfy(columnNames.contains) else {
+                  primaryKey.allSatisfy(columnNames.contains),
+                  primaryKey.allSatisfy({ name in materializedColumns.first(where: { $0.name == name })?.nullable == false }) else {
                 throw SchemaCompilerError.invalidPrimaryKey(entity.table)
             }
             if !entity.primaryKey.isEmpty,
-               entity.columns.contains(where: \.primaryKey),
-               entity.columns.filter(\.primaryKey).map(\.name) != entity.primaryKey {
+               materializedColumns.contains(where: \.primaryKey),
+               (relationshipPrimaryKeyColumns.isEmpty
+                ? materializedColumns.filter(\.primaryKey).map(\.name) != entity.primaryKey
+                : Set(materializedColumns.filter(\.primaryKey).map(\.name)) != Set(primaryKey)) {
                 throw SchemaCompilerError.invalidPrimaryKey(entity.table)
             }
 
@@ -316,7 +690,7 @@ public struct SchemaIR: Codable, Equatable, Sendable {
                     throw SchemaCompilerError.invalidConstraint(table: entity.table, constraint: unique.name)
                 }
             }
-            for foreignKey in entity.foreignKeys {
+            for foreignKey in materializedForeignKeys {
                 _ = try SQLIdentifier(foreignKey.name)
                 _ = try SQLIdentifier(foreignKey.referencedTable)
                 guard !foreignKey.columns.isEmpty,
@@ -331,14 +705,20 @@ public struct SchemaIR: Codable, Equatable, Sendable {
 
             canonicalEntities.append(SchemaEntity(
                 table: entity.table,
-                columns: entity.columns.sorted { $0.name < $1.name },
+                columns: materializedColumns.sorted { $0.name < $1.name },
                 indexes: entity.indexes.sorted { $0.name < $1.name },
                 primaryKey: primaryKey,
                 checks: entity.checks.sorted { $0.name < $1.name },
                 uniqueConstraints: entity.uniqueConstraints.sorted { $0.name < $1.name },
-                foreignKeys: entity.foreignKeys.sorted { $0.name < $1.name },
-                supplementalSQL: entity.supplementalSQL
+                foreignKeys: materializedForeignKeys.sorted { $0.name < $1.name },
+                supplementalSQL: entity.supplementalSQL,
+                relationships: entity.relationships.sorted { $0.field < $1.field },
+                relationshipJoinTable: entity.relationshipJoinTable
             ))
+        }
+
+        for (table, joinTable) in generatedJoinTables where entitiesByTable[table] == nil {
+            canonicalEntities.append(joinTable)
         }
 
         self.formatVersion = formatVersion
@@ -379,6 +759,52 @@ public struct SchemaIR: Codable, Equatable, Sendable {
             (48...57).contains(byte) || (65...90).contains(byte) || (97...122).contains(byte)
                 || byte == 95 || byte == 32 || byte == 40 || byte == 41 || byte == 44 || byte == 91 || byte == 93
         }
+    }
+
+    private static func defaultRelationshipColumn(for field: String) -> String {
+        var result = ""
+        for scalar in field.unicodeScalars {
+            if CharacterSet.uppercaseLetters.contains(scalar) {
+                if !result.isEmpty { result.append("_") }
+                result.append(String(scalar).lowercased())
+            } else {
+                result.unicodeScalars.append(scalar)
+            }
+        }
+        return "\(result)_id"
+    }
+
+    private static func snakeCase(_ value: String) -> String {
+        var result = ""
+        for scalar in value.unicodeScalars {
+            if CharacterSet.uppercaseLetters.contains(scalar) {
+                if !result.isEmpty { result.append("_") }
+                result.append(String(scalar).lowercased())
+            } else {
+                result.unicodeScalars.append(scalar)
+            }
+        }
+        return result
+    }
+
+    private static func relationshipReferenceColumn(
+        _ name: String,
+        entity: SchemaEntity,
+        targetName: String,
+        field: String
+    ) throws -> SchemaColumn {
+        do { _ = try SQLIdentifier(name) }
+        catch { throw SchemaCompilerError.invalidRelationship(table: entity.table, field: field, reason: "invalid referenced column '\(name)'") }
+        guard let column = entity.columns.first(where: { $0.name == name }) else {
+            throw SchemaCompilerError.invalidRelationship(table: entity.table, field: field, reason: "referenced column '\(targetName).\(name)' does not exist")
+        }
+        let isUnique = column.primaryKey || entity.primaryKey.contains(name) || column.unique
+            || entity.uniqueConstraints.contains { $0.columns == [name] }
+            || entity.indexes.contains { $0.unique && $0.columns == [name] }
+        guard isUnique else {
+            throw SchemaCompilerError.invalidRelationship(table: entity.table, field: field, reason: "referenced column '\(targetName).\(name)' must be a primary key or uniquely constrained")
+        }
+        return column
     }
 
     private static func isSafeDefaultExpression(_ value: String) -> Bool {
@@ -425,12 +851,15 @@ public enum SchemaCompilerError: Error, Sendable, Equatable, CustomStringConvert
     case requiredColumnNeedsDefault(table: String, column: String)
     case destructiveApprovalRequired([String])
     case unsupportedChange(table: String, column: String)
+    case unsupportedPrimaryKeyChange(table: String)
     case unsupportedIndexChange(table: String)
     case invalidPostgresType(table: String, column: String)
     case invalidDefault(table: String, column: String)
     case invalidPrimaryKey(String)
     case invalidModelSQL
     case invalidConstraint(table: String, constraint: String)
+    case invalidRelationship(table: String, field: String, reason: String)
+    case unsupportedRelationshipChange(table: String, constraint: String)
 
     public var description: String {
         switch self {
@@ -445,6 +874,7 @@ public enum SchemaCompilerError: Error, Sendable, Equatable, CustomStringConvert
         case .requiredColumnNeedsDefault(let table, let column): "PEARFY_SCHEMA_009: required column '\(table).\(column)' needs a default/backfill plan"
         case .destructiveApprovalRequired(let changes): "PEARFY_SCHEMA_010: destructive schema changes require explicit approval: \(changes.joined(separator: ", "))"
         case .unsupportedChange(let table, let column): "PEARFY_SCHEMA_011: unsupported implicit column change for '\(table).\(column)'"
+        case .unsupportedPrimaryKeyChange(let table): "PEARFY_SCHEMA_021: changing the primary key of '\(table)' requires an explicit migration"
         case .unsupportedIndexChange(let table): "PEARFY_SCHEMA_012: changing existing indexes on '\(table)' requires an explicit migration"
         case .invalidIdentifierStrategy(let table, let column): "PEARFY_SCHEMA_013: identifier strategy does not match '\(table).\(column)' type/key"
         case .invalidPostgresType(let table, let column): "PEARFY_SCHEMA_014: unsafe PostgreSQL type for '\(table).\(column)'"
@@ -452,6 +882,8 @@ public enum SchemaCompilerError: Error, Sendable, Equatable, CustomStringConvert
         case .invalidPrimaryKey(let table): "PEARFY_SCHEMA_016: invalid primary-key metadata for '\(table)'"
         case .invalidModelSQL: "PEARFY_SCHEMA_017: schema model contains empty or NUL-bearing SQL"
         case .invalidConstraint(let table, let constraint): "PEARFY_SCHEMA_018: invalid constraint '\(constraint)' on '\(table)'"
+        case .invalidRelationship(let table, let field, let reason): "PEARFY_SCHEMA_019: invalid relationship '\(table).\(field)': \(reason)"
+        case .unsupportedRelationshipChange(let table, let constraint): "PEARFY_SCHEMA_020: changing existing relationship constraint '\(table).\(constraint)' requires an explicit migration"
         }
     }
 }
@@ -469,6 +901,7 @@ public struct PostgresSchemaCompiler: Sendable {
         var statements: [String] = previous == nil ? desired.preTableSQL : []
         var destructive: [String] = []
         var newEntities: [SchemaEntity] = []
+        var addedForeignKeys: [(SchemaEntity, SchemaForeignKey)] = []
 
         for entity in desired.entities {
             guard let oldEntity = previousTables[entity.table] else {
@@ -476,10 +909,21 @@ public struct PostgresSchemaCompiler: Sendable {
                 newEntities.append(entity)
                 continue
             }
+            guard oldEntity.primaryKey == entity.primaryKey else {
+                throw SchemaCompilerError.unsupportedPrimaryKeyChange(table: entity.table)
+            }
             guard oldEntity.indexes == entity.indexes else {
                 throw SchemaCompilerError.unsupportedIndexChange(table: entity.table)
             }
             try diffColumns(from: oldEntity, to: entity, statements: &statements, destructive: &destructive)
+            let oldForeignKeys = Dictionary(uniqueKeysWithValues: oldEntity.foreignKeys.map { ($0.name, $0) })
+            let desiredForeignKeys = Dictionary(uniqueKeysWithValues: entity.foreignKeys.map { ($0.name, $0) })
+            for (name, oldForeignKey) in oldForeignKeys where desiredForeignKeys[name] != oldForeignKey {
+                throw SchemaCompilerError.unsupportedRelationshipChange(table: entity.table, constraint: name)
+            }
+            for foreignKey in entity.foreignKeys where oldForeignKeys[foreignKey.name] == nil {
+                addedForeignKeys.append((entity, foreignKey))
+            }
         }
 
         for entity in newEntities {
@@ -490,6 +934,13 @@ public struct PostgresSchemaCompiler: Sendable {
         }
         for entity in newEntities {
             statements += try createForeignKeys(entity)
+        }
+        for (entity, foreignKey) in addedForeignKeys.sorted(by: { ($0.0.table, $0.1.name) < ($1.0.table, $1.1.name) }) {
+            statements += try createForeignKeys(SchemaEntity(
+                table: entity.table,
+                columns: entity.columns,
+                foreignKeys: [foreignKey]
+            ))
         }
         for entity in newEntities {
             statements += entity.supplementalSQL
